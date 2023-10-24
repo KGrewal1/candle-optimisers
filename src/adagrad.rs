@@ -12,7 +12,7 @@ use std::collections::HashMap;
 pub struct Adagrad {
     vars: Vec<Var>,
     params: ParamsAdaGrad,
-    t: usize,
+    t: f64,
     state_sum: HashMap<TensorId, Tensor>,
 }
 
@@ -52,7 +52,7 @@ impl Optimizer for Adagrad {
         // params.t = 0;
         Ok(Self {
             vars,
-            t: 0,
+            t: 0.,
             params,
             state_sum: HashMap::new(),
         })
@@ -65,8 +65,7 @@ impl Optimizer for Adagrad {
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         for var in &self.vars {
             if let Some(grad) = grads.get(var) {
-                #[allow(clippy::cast_precision_loss)]
-                let gamma_tilde = self.params.lr / (1. + (self.t as f64 * self.params.lr_decay));
+                let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
                 if self.params.weight_decay == 0. {
                     // let gt = (grad + (self.params.weight_decay * var.as_tensor())?)?;
                     let current_sum = if let Some(sum) = self.state_sum.get(&var.id()) {
@@ -92,7 +91,7 @@ impl Optimizer for Adagrad {
                 }
             }
         }
-        self.t += 1;
+        self.t += 1.;
         Ok(())
     }
 
