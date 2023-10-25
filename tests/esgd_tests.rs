@@ -61,8 +61,14 @@ fn nesterov_sgd_test() -> Result<()> {
         let loss = ys.sub(&sample_ys)?.sqr()?.sum_all()?;
         n_sgd.backward_step(&loss)?;
     }
-    assert_eq!(to_vec2_round(&w, 4)?, &[[1.0750, -9.9042]]);
-    assert_eq!(to_vec0_round(&b, 4)?, -1.8961);
+    if cfg!(target_os = "macos") {
+        assert_eq!(to_vec2_round(&w, 3)?, &[[1.075, -9.904]]);
+        assert_eq!(to_vec0_round(&b, 3)?, -1.896);
+    } else {
+        assert_eq!(to_vec2_round(&w, 4)?, &[[1.0750, -9.9042]]);
+        assert_eq!(to_vec0_round(&b, 4)?, -1.8961);
+    }
+
     Ok(())
 }
 

@@ -13,4 +13,3 @@ pub mod esgd;
 pub mod nadam;
 pub mod radam;
 pub mod rmsprop;
-pub mod rprop;

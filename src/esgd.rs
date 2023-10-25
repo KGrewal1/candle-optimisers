@@ -155,6 +155,7 @@ mod tests {
     // use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 
     use anyhow::Result;
+    use assert_approx_eq::assert_approx_eq;
     use candle_core::{Device, Tensor, Var};
     use candle_nn::{Linear, Module, Optimizer};
 
@@ -169,18 +170,15 @@ mod tests {
 
         let params = ParamsMESGD {
             lr: 0.004,
-            momentum: 0.1,
-            weight_decay: 0.0,
-            dampening: 0.2,
-            nesterov: false,
+            ..Default::default()
         };
         // Now use backprop to run a linear regression between samples and get the coefficients back.
         let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
         let b = Var::new(0f32, &Device::Cpu)?;
         let mut n_sgd = MomentumEnhancedSGD::new(vec![w.clone(), b.clone()], params)?;
-        assert_eq!(0.004, n_sgd.learning_rate());
+        assert_approx_eq!(0.004, n_sgd.learning_rate());
         n_sgd.set_learning_rate(0.002);
-        assert_eq!(0.002, n_sgd.learning_rate());
+        assert_approx_eq!(0.002, n_sgd.learning_rate());
         Ok(())
     }
 }

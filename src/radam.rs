@@ -1,0 +1,210 @@
+use candle_core::{Result, Tensor, TensorId, Var};
+use candle_nn::optim::Optimizer;
+use std::collections::HashMap;
+
+/// R Adam optimizer
+///
+/// Described in <https://arxiv.org/abs/1908.03265>
+///
+/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
+
+#[derive(Debug)]
+pub struct RAdam {
+    vars: Vec<Var>,
+    params: ParamsRAdam,
+    moments: HashMap<TensorId, (Tensor, Tensor)>,
+    rho_inf: f64,
+    t: f64,
+}
+
+#[derive(Debug)]
+pub struct ParamsRAdam {
+    pub lr: f64,
+    pub beta_1: f64,
+    pub beta_2: f64,
+    pub weight_decay: f64,
+    pub eps: f64,
+}
+
+impl Default for ParamsRAdam {
+    fn default() -> Self {
+        Self {
+            lr: 0.001,
+            beta_1: 0.9,
+            beta_2: 0.999,
+            eps: 1e-8,
+            weight_decay: 0.0,
+        }
+    }
+}
+
+impl Optimizer for RAdam {
+    type Config = ParamsRAdam;
+
+    fn new(vars: Vec<Var>, params: ParamsRAdam) -> Result<Self> {
+        let vars = vars
+            .into_iter()
+            .filter(|var| var.dtype().is_float())
+            .collect();
+        // // Err(SGDError::NoMomentum)?;
+        // let mut params = params;
+        // params.t = 0;
+        let rho_inf = 2. / (1. - params.beta_2) - 1.;
+        Ok(Self {
+            vars,
+            params,
+            moments: HashMap::new(),
+            rho_inf,
+            t: 1.,
+        })
+    }
+
+    fn learning_rate(&self) -> f64 {
+        self.params.lr
+    }
+
+    fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
+        // println!("prod {}", prod);
+        let rho_t = self.rho_inf
+            - 2. * self.t * self.params.beta_2.powf(self.t)
+                / (1. - self.params.beta_2.powf(self.t));
+        for var in &self.vars {
+            if let Some(grad) = grads.get(var) {
+                if self.params.weight_decay == 0. {
+                    if let Some((m, v)) = self.moments.get(&var.id()) {
+                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
+                        let v = ((self.params.beta_2 * v)?
+                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
+
+                        let delta = if rho_t > 5. {
+                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                                / (&v.sqrt()? + self.params.eps)?)?;
+                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                                .sqrt();
+                            (self.params.lr * r * (l * m_hat)?)?
+                        } else {
+                            (self.params.lr * m_hat)?
+                        };
+                        var.set(&var.sub(&(delta))?)?;
+                        // println!("m {}", m);
+                        // println!("v {}", v);
+                        self.moments.insert(var.id(), (m, v));
+                    } else {
+                        let m = ((1. - self.params.beta_1) * grad)?;
+                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
+                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
+
+                        let delta = if rho_t > 5. {
+                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                                / (&v.sqrt()? + self.params.eps)?)?;
+                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                                .sqrt();
+                            (self.params.lr * r * (l * m_hat)?)?
+                        } else {
+                            (self.params.lr * m_hat)?
+                        };
+                        var.set(&var.sub(&(delta))?)?;
+                        // println!("m {}", m);
+                        // println!("v {}", v);
+                        self.moments.insert(var.id(), (m, v));
+                    };
+                } else {
+                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
+                    if let Some((m, v)) = self.moments.get(&var.id()) {
+                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
+                        let v = ((self.params.beta_2 * v)?
+                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
+
+                        let delta = if rho_t > 5. {
+                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                                / (&v.sqrt()? + self.params.eps)?)?;
+                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                                .sqrt();
+                            (self.params.lr * r * (l * m_hat)?)?
+                        } else {
+                            (self.params.lr * m_hat)?
+                        };
+                        var.set(&var.sub(&(delta))?)?;
+                        // println!("m {}", m);
+                        // println!("v {}", v);
+                        self.moments.insert(var.id(), (m, v));
+                    } else {
+                        let m = ((1. - self.params.beta_1) * grad)?;
+                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
+                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
+
+                        let delta = if rho_t > 5. {
+                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                                / (&v.sqrt()? + self.params.eps)?)?;
+                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                                .sqrt();
+                            (self.params.lr * r * (l * m_hat)?)?
+                        } else {
+                            (self.params.lr * m_hat)?
+                        };
+                        var.set(&var.sub(&(delta))?)?;
+                        // println!("m {}", m);
+                        // println!("v {}", v);
+                        self.moments.insert(var.id(), (m, v));
+                    };
+                }
+            }
+        }
+        self.t += 1.;
+        Ok(())
+    }
+
+    fn set_learning_rate(&mut self, lr: f64) {
+        self.params.lr = lr;
+    }
+}
+
+impl RAdam {
+    #[must_use]
+    pub fn into_inner(self) -> Vec<Var> {
+        self.vars
+    }
+
+    pub fn push(&mut self, var: &Var) {
+        self.vars.push(var.clone());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // use candle_core::test_utils::{to_vec0_round, to_vec2_round};
+
+    use anyhow::Result;
+    use assert_approx_eq::assert_approx_eq;
+    use candle_core::{Device, Tensor, Var};
+    use candle_nn::{Linear, Module, Optimizer};
+
+    use super::*;
+    #[test]
+    fn insertiontest() -> Result<()> {
+        let w_gen = Tensor::new(&[[3f32, 1.]], &Device::Cpu)?;
+        let b_gen = Tensor::new(-2f32, &Device::Cpu)?;
+        let gen = Linear::new(w_gen, Some(b_gen));
+        let sample_xs = Tensor::new(&[[2f32, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
+        let _sample_ys = gen.forward(&sample_xs)?;
+
+        let params = ParamsRAdam {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let mut n_sgd = RAdam::new(vec![w.clone(), b.clone()], params)?;
+        assert_approx_eq!(0.004, n_sgd.learning_rate());
+        n_sgd.set_learning_rate(0.002);
+        assert_approx_eq!(0.002, n_sgd.learning_rate());
+        Ok(())
+    }
+}
