@@ -1,7 +1,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-/// Adagrad optimizer
+/// Adagrad optimiser
 ///
 /// Described in <https://jmlr.org/papers/v12/duchi11a.html>
 ///

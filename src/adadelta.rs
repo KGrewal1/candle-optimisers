@@ -1,7 +1,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-/// Adadelta optimizer
+/// Adadelta optimiser
 ///
 /// Described in <https://arxiv.org/abs/1212.5701>
 ///

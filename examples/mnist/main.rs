@@ -6,12 +6,17 @@ mod parse_cli;
 mod training;
 
 use models::{LinearModel, Mlp};
-use optim::AdaDelta;
+
+use optimisers::adadelta::Adadelta;
+use optimisers::adagrad::Adagrad;
+use optimisers::adamax::Adamax;
+use optimisers::esgd::MomentumEnhancedSGD;
+use optimisers::nadam::NAdam;
+use optimisers::radam::RAdam;
+use optimisers::rmsprop::RMSprop;
+
 use parse_cli::{Args, TrainingArgs, WhichModel, WhichOptim};
 use training::training_loop;
-
-use crate::optim::{AdaGrad, AdaMax, NsAdam, RsAdam, RMS, SGD};
-
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     // Load the dataset
@@ -38,32 +43,34 @@ pub fn main() -> anyhow::Result<()> {
 
     match args.optim {
         WhichOptim::Adadelta => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, AdaDelta>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, AdaDelta>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, Adadelta>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, Adadelta>(m, &training_args),
         },
         WhichOptim::Adagrad => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, AdaGrad>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, AdaGrad>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, Adagrad>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, Adagrad>(m, &training_args),
         },
         WhichOptim::Adamax => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, AdaMax>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, AdaMax>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, Adamax>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, Adamax>(m, &training_args),
         },
         WhichOptim::SGD => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, SGD>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, SGD>(m, &training_args),
+            WhichModel::Linear => {
+                training_loop::<LinearModel, MomentumEnhancedSGD>(m, &training_args)
+            }
+            WhichModel::Mlp => training_loop::<Mlp, MomentumEnhancedSGD>(m, &training_args),
         },
         WhichOptim::NAdam => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, NsAdam>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, NsAdam>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, NAdam>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, NAdam>(m, &training_args),
         },
         WhichOptim::RAdam => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, RsAdam>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, RsAdam>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, RAdam>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, RAdam>(m, &training_args),
         },
         WhichOptim::RMS => match args.model {
-            WhichModel::Linear => training_loop::<LinearModel, RMS>(m, &training_args),
-            WhichModel::Mlp => training_loop::<Mlp, RMS>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, RMSprop>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, RMSprop>(m, &training_args),
         },
     }
 }

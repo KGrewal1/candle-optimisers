@@ -2,7 +2,7 @@ use candle_core::{Result, Tensor, TensorId, Var};
 use candle_nn::optim::Optimizer;
 use std::collections::HashMap;
 
-/// Adamax optimizer
+/// Adamax optimiser
 ///
 /// Described in <https://arxiv.org/abs/1412.6980>
 ///

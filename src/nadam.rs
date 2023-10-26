@@ -1,7 +1,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-/// Adam optimizer with Nesterov momentum
+/// Adam optimiser with Nesterov momentum
 ///
 /// Described in <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>
 ///

@@ -1,7 +1,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-/// RMS Prop optimizer
+/// RMS Prop optimiser
 ///
 /// Described in <https://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>
 ///

@@ -30,14 +30,14 @@ pub fn training_loop<M: Model, O: Optim>(
         varmap.load(load)?
     }
 
-    // create an optimizer
+    // create an optimiser
     let mut optimiser = O::new(varmap.all_vars(), args.learning_rate)?;
     // candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
     // load the test images
     let test_images = m.test_images.to_device(&dev)?;
     // load the test labels
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
-    // loop for model optimization
+    // loop for model optimisation
     for epoch in 1..args.epochs {
         // get log probabilities of results
         let logits = model.forward(&train_images)?;
@@ -46,7 +46,7 @@ pub fn training_loop<M: Model, O: Optim>(
         // get the loss
         let loss = loss::nll(&log_sm, &train_labels)?;
         // step the tensors by backpropagating the loss
-        optimiser.backward_step(&loss)?;
+        optimiser.back_step(&loss)?;
 
         // get the log probabilities of the test images
         let test_logits = model.forward(&test_images)?;

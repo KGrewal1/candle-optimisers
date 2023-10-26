@@ -1,7 +1,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-/// R Adam optimizer
+/// R Adam optimiser
 ///
 /// Described in <https://arxiv.org/abs/1908.03265>
 ///
