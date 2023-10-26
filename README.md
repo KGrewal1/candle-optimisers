@@ -21,6 +21,14 @@ A crate for optimisers for use with [candle](https://github.com/huggingface/cand
 
 These are all checked against their pytorch implementation (see pytorch_test.ipynb) and should implement the same functionality (though without some input checking).
 
+## Usage
+
+```cli
+cargo add --git https://github.com/KGrewal1/optimisers.git optimisers
+```
+
+## To do
+
 Currently unimplemented from pytorch:
 
 * AdamW (see Adam in candle-nn)
