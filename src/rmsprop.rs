@@ -1,7 +1,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-/// RMSProp optimizer
+/// RMS Prop optimizer
 ///
 /// Described in <https://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>
 ///
@@ -43,10 +43,10 @@ struct VarRMSPropMomentumCentered {
 
 #[derive(Debug)]
 enum VarRMS {
-    VarRMSProp(VarRMSProp),
-    VarRMSPropCentered(VarRMSPropCentered),
-    VarRMSPropMomentum(VarRMSPropMomentum),
-    VarRMSPropMomentumCentered(VarRMSPropMomentumCentered),
+    RMSProp(VarRMSProp),
+    Centered(VarRMSPropCentered),
+    Momentum(VarRMSPropMomentum),
+    MomentumCentered(VarRMSPropMomentumCentered),
 }
 
 #[derive(Debug)]
@@ -88,11 +88,7 @@ impl Optimizer for RMSprop {
                     let device = var.device();
                     let v = Var::zeros(shape, dtype, device)?;
                     let g = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::VarRMSPropCentered(VarRMSPropCentered {
-                        theta: var,
-                        v,
-                        g,
-                    }))
+                    Ok(VarRMS::Centered(VarRMSPropCentered { theta: var, v, g }))
                 })
                 .collect::<Result<Vec<VarRMS>>>()?;
 
@@ -108,7 +104,7 @@ impl Optimizer for RMSprop {
                     let shape = var.shape();
                     let device = var.device();
                     let v = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::VarRMSProp(VarRMSProp { theta: var, v }))
+                    Ok(VarRMS::RMSProp(VarRMSProp { theta: var, v }))
                 })
                 .collect::<Result<Vec<VarRMS>>>()?;
 
@@ -125,11 +121,7 @@ impl Optimizer for RMSprop {
                     let device = var.device();
                     let v = Var::zeros(shape, dtype, device)?;
                     let b = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::VarRMSPropMomentum(VarRMSPropMomentum {
-                        theta: var,
-                        v,
-                        b,
-                    }))
+                    Ok(VarRMS::Momentum(VarRMSPropMomentum { theta: var, v, b }))
                 })
                 .collect::<Result<Vec<VarRMS>>>()?;
 
@@ -147,14 +139,12 @@ impl Optimizer for RMSprop {
                     let v = Var::zeros(shape, dtype, device)?;
                     let b = Var::zeros(shape, dtype, device)?;
                     let g = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::VarRMSPropMomentumCentered(
-                        VarRMSPropMomentumCentered {
-                            theta: var,
-                            v,
-                            b,
-                            g,
-                        },
-                    ))
+                    Ok(VarRMS::MomentumCentered(VarRMSPropMomentumCentered {
+                        theta: var,
+                        v,
+                        b,
+                        g,
+                    }))
                 })
                 .collect::<Result<Vec<VarRMS>>>()?;
 
@@ -166,12 +156,11 @@ impl Optimizer for RMSprop {
         self.params.lr
     }
 
+    #[allow(clippy::too_many_lines)]
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        // println!("prod {}", prod);
-
         for var in &self.vars {
             match var {
-                VarRMS::VarRMSProp(var) => {
+                VarRMS::RMSProp(var) => {
                     let theta = &var.theta;
                     let v = &var.v;
                     if let Some(grad) = grads.get(theta) {
@@ -193,7 +182,7 @@ impl Optimizer for RMSprop {
                         }
                     }
                 }
-                VarRMS::VarRMSPropCentered(var) => {
+                VarRMS::Centered(var) => {
                     let theta = &var.theta;
                     let v = &var.v;
                     let g_avg = &var.g;
@@ -228,7 +217,7 @@ impl Optimizer for RMSprop {
                         }
                     }
                 }
-                VarRMS::VarRMSPropMomentum(var) => {
+                VarRMS::Momentum(var) => {
                     let theta = &var.theta;
                     let v = &var.v;
                     let b = &var.b;
@@ -255,7 +244,7 @@ impl Optimizer for RMSprop {
                         }
                     }
                 }
-                VarRMS::VarRMSPropMomentumCentered(var) => {
+                VarRMS::MomentumCentered(var) => {
                     let theta = &var.theta;
                     let v = &var.v;
                     let g_avg = &var.g;
