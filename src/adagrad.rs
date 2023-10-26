@@ -1,6 +1,5 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// Adagrad optimizer
 ///
@@ -10,10 +9,15 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Adagrad {
-    vars: Vec<Var>,
+    vars: Vec<VarAdaGrad>,
     params: ParamsAdaGrad,
     t: f64,
-    state_sum: HashMap<TensorId, Tensor>,
+}
+
+#[derive(Debug)]
+struct VarAdaGrad {
+    theta: Var,
+    sum: Var,
 }
 
 #[derive(Debug)]
@@ -46,7 +50,14 @@ impl Optimizer for Adagrad {
         let vars = vars
             .into_iter()
             .filter(|var| var.dtype().is_float())
-            .collect();
+            .map(|var| {
+                let dtype = var.dtype();
+                let shape = var.shape();
+                let device = var.device();
+                let sum = Var::zeros(shape, dtype, device)?;
+                Ok(VarAdaGrad { theta: var, sum })
+            })
+            .collect::<Result<Vec<VarAdaGrad>>>()?;
         // // Err(SGDError::NoMomentum)?;
         // let mut params = params;
         // params.t = 0;
@@ -54,7 +65,6 @@ impl Optimizer for Adagrad {
             vars,
             t: 0.,
             params,
-            state_sum: HashMap::new(),
         })
     }
 
@@ -64,30 +74,24 @@ impl Optimizer for Adagrad {
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         for var in &self.vars {
-            if let Some(grad) = grads.get(var) {
+            let theta = &var.theta;
+            let sum = &var.sum;
+            if let Some(grad) = grads.get(theta) {
                 let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
                 if self.params.weight_decay == 0. {
                     // let gt = (grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    let current_sum = if let Some(sum) = self.state_sum.get(&var.id()) {
-                        (sum + grad.powf(2.)?)?
-                    } else {
-                        (self.params.initial_acc + grad.powf(2.)?)?
-                    };
+                    let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
-                    self.state_sum.insert(var.id(), current_sum);
-                    var.set(&var.sub(&change)?)?;
+                    sum.set(&current_sum)?;
+                    theta.set(&theta.sub(&change)?)?;
                 } else {
-                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    let current_sum = if let Some(sum) = self.state_sum.get(&var.id()) {
-                        (sum + grad.powf(2.)?)?
-                    } else {
-                        (self.params.initial_acc + grad.powf(2.)?)?
-                    };
+                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
+                    let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
-                    self.state_sum.insert(var.id(), current_sum);
-                    var.set(&var.sub(&change)?)?;
+                    sum.set(&current_sum)?;
+                    theta.set(&theta.sub(&change)?)?;
                 }
             }
         }
@@ -103,12 +107,12 @@ impl Optimizer for Adagrad {
 impl Adagrad {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
+        self.vars.into_iter().map(|v| v.theta).collect()
     }
 
-    pub fn push(&mut self, var: &Var) {
-        self.vars.push(var.clone());
-    }
+    // pub fn push(&mut self, var: &Var) {
+    //     self.vars.push(var.clone());
+    // }
 }
 
 #[cfg(test)]

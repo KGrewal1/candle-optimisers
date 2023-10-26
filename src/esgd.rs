@@ -1,6 +1,5 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// Optimizer for Stochastic Gradient Descent with momentum.
 ///
@@ -10,9 +9,14 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct MomentumEnhancedSGD {
-    vars: Vec<Var>,
+    vars: Vec<VarMESGD>,
     params: ParamsMESGD,
-    prev_step: HashMap<TensorId, Tensor>,
+}
+
+#[derive(Debug)]
+struct VarMESGD {
+    theta: Var,
+    b: Option<Var>,
 }
 
 #[derive(Debug)]
@@ -43,13 +47,13 @@ impl Optimizer for MomentumEnhancedSGD {
         let vars = vars
             .into_iter()
             .filter(|var| var.dtype().is_float())
-            .collect();
+            .map(|var| VarMESGD {
+                theta: var,
+                b: None,
+            })
+            .collect::<Vec<VarMESGD>>();
         // Err(SGDError::NoMomentum)?;
-        Ok(Self {
-            vars,
-            params,
-            prev_step: HashMap::new(),
-        })
+        Ok(Self { vars, params })
     }
 
     fn learning_rate(&self) -> f64 {
@@ -57,24 +61,26 @@ impl Optimizer for MomentumEnhancedSGD {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        for var in &self.vars {
-            if let Some(grad) = grads.get(var) {
+        for var in &mut self.vars {
+            let theta = &var.theta;
+            // let prev_step = var.b;
+            if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    if let Some(prev_step) = self.prev_step.get(&var.id()) {
+                    if let Some(prev_step) = &(var.b) {
                         // println!("Exists");
                         // bt​←μbt−1​+(1−τ)gt
-                        let bt = ((prev_step * self.params.momentum)?
+                        let bt = ((prev_step.as_tensor() * self.params.momentum)?
                             + (1. - self.params.dampening) * (grad))?;
                         if self.params.nesterov {
                             let gt = (grad + (self.params.momentum * &bt)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
-                            var.set(&var.sub(&(gt * self.params.lr)?)?)?;
+                            prev_step.set(&bt)?;
+                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
                         } else {
                             // if not nesterov gt = bt
-                            var.set(&var.sub(&(&bt * self.params.lr)?)?)?;
+                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
+                            prev_step.set(&bt)?;
                         };
                     } else {
                         // println!("Doesn't Exist");
@@ -84,32 +90,32 @@ impl Optimizer for MomentumEnhancedSGD {
                         if self.params.nesterov {
                             let gt = (grad + (self.params.momentum * &bt)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
-                            var.set(&var.sub(&(gt * self.params.lr)?)?)?;
+                            var.b = Some(Var::from_tensor(&bt)?);
+                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
                         } else {
                             // if not nesterov gt = bt
-                            var.set(&var.sub(&(&bt * self.params.lr)?)?)?;
+                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
+                            var.b = Some(Var::from_tensor(&bt)?);
                         };
                     };
                 } else {
-                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    if let Some(prev_step) = self.prev_step.get(&var.id()) {
+                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
+                    if let Some(prev_step) = &(var.b) {
                         // println!("Exists");
                         // bt​←μbt−1​+(1−τ)gt
-                        let bt = ((prev_step * self.params.momentum)?
+                        let bt = ((prev_step.as_tensor() * self.params.momentum)?
                             + (1. - self.params.dampening) * (grad))?;
                         if self.params.nesterov {
                             let gt = (grad + (self.params.momentum * &bt)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
-                            var.set(&var.sub(&(gt * self.params.lr)?)?)?;
+                            prev_step.set(&bt)?;
+                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
                         } else {
                             // if not nesterov gt = bt
-                            var.set(&var.sub(&(&bt * self.params.lr)?)?)?;
+                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
+                            prev_step.set(&bt)?;
                         };
                     } else {
                         // println!("Doesn't Exist");
@@ -119,13 +125,13 @@ impl Optimizer for MomentumEnhancedSGD {
                         if self.params.nesterov {
                             let gt = (grad + (self.params.momentum * &bt)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
-                            var.set(&var.sub(&(gt * self.params.lr)?)?)?;
+                            var.b = Some(Var::from_tensor(&bt)?);
+                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
                         } else {
                             // if not nesterov gt = bt
-                            var.set(&var.sub(&(&bt * self.params.lr)?)?)?;
+                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                             // println!("Momentum {}", bt);
-                            self.prev_step.insert(var.id(), bt);
+                            var.b = Some(Var::from_tensor(&bt)?);
                         };
                     };
                 }
@@ -142,12 +148,12 @@ impl Optimizer for MomentumEnhancedSGD {
 impl MomentumEnhancedSGD {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
+        self.vars.into_iter().map(|v| v.theta).collect()
     }
 
-    pub fn push(&mut self, var: &Var) {
-        self.vars.push(var.clone());
-    }
+    // pub fn push(&mut self, var: &Var) {
+    //     self.vars.push(var.clone());
+    // }
 }
 
 #[cfg(test)]

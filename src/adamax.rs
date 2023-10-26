@@ -10,10 +10,17 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Adamax {
-    vars: Vec<Var>,
+    vars: Vec<VarAdaMax>,
     params: ParamsAdaMax,
     moment_norm: HashMap<TensorId, (Tensor, Tensor)>,
     t: f64,
+}
+
+#[derive(Debug)]
+struct VarAdaMax {
+    theta: Var,
+    m: Var,
+    u: Var,
 }
 
 #[derive(Debug)]
@@ -44,7 +51,15 @@ impl Optimizer for Adamax {
         let vars = vars
             .into_iter()
             .filter(|var| var.dtype().is_float())
-            .collect();
+            .map(|var| {
+                let dtype = var.dtype();
+                let shape = var.shape();
+                let device = var.device();
+                let m = Var::zeros(shape, dtype, device)?;
+                let u = Var::zeros(shape, dtype, device)?;
+                Ok(VarAdaMax { theta: var, m, u })
+            })
+            .collect::<Result<Vec<VarAdaMax>>>()?;
         // // Err(SGDError::NoMomentum)?;
         // let mut params = params;
         // params.t = 0;
@@ -62,42 +77,33 @@ impl Optimizer for Adamax {
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         for var in &self.vars {
-            if let Some(grad) = grads.get(var) {
+            let theta = &var.theta;
+            let m = &var.m;
+            let u = &var.u;
+            if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    if let Some((m, u)) = self.moment_norm.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + (1. - self.params.beta_1) * grad)?;
-                        let u =
-                            (self.params.beta_2 * u)?.maximum(&(grad.abs()? + self.params.eps)?)?;
-                        let delta = (&m * self.params.lr)?
-                            .div(&(&u * (1. - self.params.beta_1.powf(self.t)))?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        self.moment_norm.insert(var.id(), (m, u));
-                    } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let u = (grad.abs()? + self.params.eps)?;
-                        let delta = (&m * self.params.lr)?
-                            .div(&(&u * (1. - self.params.beta_1.powf(self.t)))?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        self.moment_norm.insert(var.id(), (m, u));
-                    };
+                    let next_m =
+                        ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
+                    let next_u = (self.params.beta_2 * u.as_tensor())?
+                        .maximum(&(grad.abs()? + self.params.eps)?)?;
+                    let delta = (&next_m * self.params.lr)?
+                        .div(&(&next_u * (1. - self.params.beta_1.powf(self.t)))?)?;
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    u.set(&next_u)?;
+                    self.moment_norm.insert(theta.id(), (next_m, next_u));
                 } else {
-                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    if let Some((m, u)) = self.moment_norm.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + (1. - self.params.beta_1) * grad)?;
-                        let u =
-                            (self.params.beta_2 * u)?.maximum(&(grad.abs()? + self.params.eps)?)?;
-                        let delta = (&m * self.params.lr)?
-                            .div(&(&u * (1. - self.params.beta_1.powf(self.t)))?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        self.moment_norm.insert(var.id(), (m, u));
-                    } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let u = (grad.abs()? + self.params.eps)?;
-                        let delta = (&m * self.params.lr)?
-                            .div(&(&u * (1. - self.params.beta_1.powf(self.t)))?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        self.moment_norm.insert(var.id(), (m, u));
-                    };
+                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
+                    let next_m =
+                        ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
+                    let next_u = (self.params.beta_2 * u.as_tensor())?
+                        .maximum(&(grad.abs()? + self.params.eps)?)?;
+                    let delta = (&next_m * self.params.lr)?
+                        .div(&(&next_u * (1. - self.params.beta_1.powf(self.t)))?)?;
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    u.set(&next_u)?;
+                    self.moment_norm.insert(theta.id(), (next_m, next_u));
                 }
             }
         }
@@ -113,12 +119,12 @@ impl Optimizer for Adamax {
 impl Adamax {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
+        self.vars.into_iter().map(|v| v.theta).collect()
     }
 
-    pub fn push(&mut self, var: &Var) {
-        self.vars.push(var.clone());
-    }
+    // pub fn push(&mut self, var: &Var) {
+    //     self.vars.push(var.clone());
+    // }
 }
 
 #[cfg(test)]

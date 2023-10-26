@@ -1,6 +1,5 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// Adadelta optimizer
 ///
@@ -10,9 +9,16 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Adadelta {
-    vars: Vec<Var>,
+    vars: Vec<VarAdaDelta>,
     params: ParamsAdaDelta,
-    avg_acc: HashMap<TensorId, (Tensor, Tensor)>,
+    // avg_acc: HashMap<TensorId, (Tensor, Tensor)>,
+}
+
+#[derive(Debug)]
+struct VarAdaDelta {
+    theta: Var,
+    v: Var,
+    u: Var,
 }
 
 #[derive(Debug)]
@@ -41,14 +47,22 @@ impl Optimizer for Adadelta {
         let vars = vars
             .into_iter()
             .filter(|var| var.dtype().is_float())
-            .collect();
+            .map(|var| {
+                let dtype = var.dtype();
+                let shape = var.shape();
+                let device = var.device();
+                let v = Var::zeros(shape, dtype, device)?;
+                let u = Var::zeros(shape, dtype, device)?;
+                Ok(VarAdaDelta { theta: var, v, u })
+            })
+            .collect::<Result<Vec<VarAdaDelta>>>()?;
         // // Err(SGDError::NoMomentum)?;
         // let mut params = params;
         // params.t = 0;
         Ok(Self {
             vars,
             params,
-            avg_acc: HashMap::new(),
+            // avg_acc: HashMap::new(),
         })
     }
 
@@ -58,50 +72,34 @@ impl Optimizer for Adadelta {
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         for var in &self.vars {
-            if let Some(grad) = grads.get(var) {
+            let theta = &var.theta;
+            let v = &var.v;
+            let u = &var.u;
+            if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    if let Some((v, u)) = self.avg_acc.get(&var.id()) {
-                        let v =
-                            ((v * self.params.rho)? + (1. - self.params.rho) * grad.powf(2.)?)?;
-                        let delta_x = (((u + self.params.eps)?.powf(0.5)?)
-                            .div(&((&v + self.params.eps)?.powf(0.5)?))?
-                            * grad)?;
-                        let u = ((u * self.params.rho)?
-                            + (1. - self.params.rho) * delta_x.powf(2.)?)?;
-                        var.set(&var.sub(&(delta_x * self.params.lr)?)?)?;
-                        self.avg_acc.insert(var.id(), (v, u));
-                    } else {
-                        // start  u and v as 0 tensors
-                        let v = ((1. - self.params.rho) * grad.powf(2.)?)?;
-                        let delta_x = ((self.params.eps.powf(0.5))
-                            * (&((&v + self.params.eps)?.powf(-0.5)?))
-                            * grad)?;
-                        let u = ((1. - self.params.rho) * delta_x.powf(2.)?)?;
-                        var.set(&var.sub(&(delta_x * self.params.lr)?)?)?;
-                        self.avg_acc.insert(var.id(), (v, u));
-                    };
+                    let next_v = ((v.as_tensor() * self.params.rho)?
+                        + (1. - self.params.rho) * grad.powf(2.)?)?;
+                    let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
+                        .div(&((&next_v + self.params.eps)?.powf(0.5)?))?
+                        * grad)?;
+                    let next_u = ((u.as_tensor() * self.params.rho)?
+                        + (1. - self.params.rho) * delta_x.powf(2.)?)?;
+                    theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
+                    v.set(&next_v)?;
+                    u.set(&next_u)?;
+                    // self.avg_acc.insert(var.id(), (next_v, next_u));
                 } else {
-                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    if let Some((v, u)) = self.avg_acc.get(&var.id()) {
-                        let v =
-                            ((v * self.params.rho)? + (1. - self.params.rho) * grad.powf(2.)?)?;
-                        let delta_x = (((u + self.params.eps)?.powf(0.5)?)
-                            .div(&((&v + self.params.eps)?.powf(0.5)?))?
-                            * grad)?;
-                        let u = ((u * self.params.rho)?
-                            + (1. - self.params.rho) * delta_x.powf(2.)?)?;
-                        var.set(&var.sub(&(delta_x * self.params.lr)?)?)?;
-                        self.avg_acc.insert(var.id(), (v, u));
-                    } else {
-                        // start  u and v as 0 tensors
-                        let v = ((1. - self.params.rho) * grad.powf(2.)?)?;
-                        let delta_x = ((self.params.eps.powf(0.5))
-                            * (&((&v + self.params.eps)?.powf(-0.5)?))
-                            * grad)?;
-                        let u = ((1. - self.params.rho) * delta_x.powf(2.)?)?;
-                        var.set(&var.sub(&(delta_x * self.params.lr)?)?)?;
-                        self.avg_acc.insert(var.id(), (v, u));
-                    };
+                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
+                    let next_v = ((v.as_tensor() * self.params.rho)?
+                        + (1. - self.params.rho) * grad.powf(2.)?)?;
+                    let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
+                        .div(&((&next_v + self.params.eps)?.powf(0.5)?))?
+                        * grad)?;
+                    let next_u = ((u.as_tensor() * self.params.rho)?
+                        + (1. - self.params.rho) * delta_x.powf(2.)?)?;
+                    theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
+                    v.set(&next_v)?;
+                    u.set(&next_u)?;
                 }
             }
         }
@@ -116,12 +114,12 @@ impl Optimizer for Adadelta {
 impl Adadelta {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
+        self.vars.into_iter().map(|v| v.theta).collect()
     }
 
-    pub fn push(&mut self, var: &Var) {
-        self.vars.push(var.clone());
-    }
+    // pub fn push(&mut self, var: &Var) {
+    //     self.vars.push(var.clone());
+    // }
 }
 
 #[cfg(test)]

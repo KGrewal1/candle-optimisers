@@ -1,6 +1,5 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// Adam optimizer with Nesterov momentum
 ///
@@ -10,14 +9,20 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct NAdam {
-    vars: Vec<Var>,
+    vars: Vec<VarNAdam>,
     params: ParamsNAdam,
-    moments: HashMap<TensorId, (Tensor, Tensor)>,
     mu_t: f64,
     mu_t2: f64,
     prod: f64,
     prod2: f64,
     t: f64,
+}
+
+#[derive(Debug)]
+struct VarNAdam {
+    theta: Var,
+    m: Var,
+    v: Var,
 }
 
 #[derive(Debug)]
@@ -52,7 +57,15 @@ impl Optimizer for NAdam {
         let vars = vars
             .into_iter()
             .filter(|var| var.dtype().is_float())
-            .collect();
+            .map(|var| {
+                let dtype = var.dtype();
+                let shape = var.shape();
+                let device = var.device();
+                let m = Var::zeros(shape, dtype, device)?;
+                let v = Var::zeros(shape, dtype, device)?;
+                Ok(VarNAdam { theta: var, m, v })
+            })
+            .collect::<Result<Vec<VarNAdam>>>()?;
         // // Err(SGDError::NoMomentum)?;
         // let mut params = params;
         // params.t = 0;
@@ -61,7 +74,6 @@ impl Optimizer for NAdam {
         Ok(Self {
             vars,
             params,
-            moments: HashMap::new(),
             t: 1.,
             mu_t: 1.,
             mu_t2,
@@ -86,92 +98,53 @@ impl Optimizer for NAdam {
         self.prod2 = prod2;
         // println!("prod {}", prod);
         for var in &self.vars {
-            if let Some(grad) = grads.get(var) {
+            let theta = &var.theta;
+            let m = &var.m;
+            let v = &var.v;
+            if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    if let Some((m, v)) = self.moments.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
-                        let v = ((self.params.beta_2 * v)?
-                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                        let m_hat = (((mu_t2 / (1. - prod2)) * &m)?
-                            + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                        let v_hat = (&v / (1. - self.params.beta_2.powf(self.t)))?;
-                        let delta = (m_hat * self.params.lr)?
-                            .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
-                    } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
-                        let m_hat = (((mu_t2 / (1. - prod2)) * &m)?
-                            + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                        let v_hat = (&v / (1. - self.params.beta_2.powf(self.t)))?;
-                        let delta = (m_hat * self.params.lr)?
-                            .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
-                    };
+                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                        + ((1. - self.params.beta_1) * grad)?)?;
+                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                    let m_hat = (((mu_t2 / (1. - prod2)) * &next_m)?
+                        + (((1. - mu_t) / (1. - prod)) * grad)?)?;
+                    let v_hat = (&next_v / (1. - self.params.beta_2.powf(self.t)))?;
+                    let delta =
+                        (m_hat * self.params.lr)?.div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    v.set(&next_v)?;
                 } else if self.params.decoupled_weight_decay {
-                    var.set(
-                        &(var.as_tensor() * (1. - self.params.lr * self.params.weight_decay))?,
+                    theta.set(
+                        &(theta.as_tensor() * (1. - self.params.lr * self.params.weight_decay))?,
                     )?;
-                    if let Some((m, v)) = self.moments.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
-                        let v = ((self.params.beta_2 * v)?
-                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                        let m_hat = (((mu_t2 / (1. - prod2)) * &m)?
-                            + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                        let v_hat = (&v / (1. - self.params.beta_2.powf(self.t)))?;
-                        let delta = (m_hat * self.params.lr)?
-                            .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
-                    } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
-                        let m_hat = (((mu_t2 / (1. - prod2)) * &m)?
-                            + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                        let v_hat = (&v / (1. - self.params.beta_2.powf(self.t)))?;
-                        let delta = (m_hat * self.params.lr)?
-                            .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
-                    };
+                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                        + ((1. - self.params.beta_1) * grad)?)?;
+                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                    let m_hat = (((mu_t2 / (1. - prod2)) * &next_m)?
+                        + (((1. - mu_t) / (1. - prod)) * grad)?)?;
+                    let v_hat = (&next_v / (1. - self.params.beta_2.powf(self.t)))?;
+                    let delta =
+                        (m_hat * self.params.lr)?.div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    v.set(&next_v)?;
                 } else {
-                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    if let Some((m, v)) = self.moments.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
-                        let v = ((self.params.beta_2 * v)?
-                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                        let m_hat = (((mu_t2 / (1. - prod2)) * &m)?
-                            + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                        let v_hat = (&v / (1. - self.params.beta_2.powf(self.t)))?;
-                        let delta = (m_hat * self.params.lr)?
-                            .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
-                    } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
-                        let m_hat = (((mu_t2 / (1. - prod2)) * &m)?
-                            + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                        let v_hat = (&v / (1. - self.params.beta_2.powf(self.t)))?;
-                        let delta = (m_hat * self.params.lr)?
-                            .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
-                    };
+                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
+                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                        + ((1. - self.params.beta_1) * grad)?)?;
+                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                    let m_hat = (((mu_t2 / (1. - prod2)) * &next_m)?
+                        + (((1. - mu_t) / (1. - prod)) * grad)?)?;
+                    let v_hat = (&next_v / (1. - self.params.beta_2.powf(self.t)))?;
+                    let delta =
+                        (m_hat * self.params.lr)?.div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    v.set(&next_v)?;
                 }
             }
         }
@@ -187,12 +160,12 @@ impl Optimizer for NAdam {
 impl NAdam {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
+        self.vars.into_iter().map(|v| v.theta).collect()
     }
 
-    pub fn push(&mut self, var: &Var) {
-        self.vars.push(var.clone());
-    }
+    // pub fn push(&mut self, var: &Var) {
+    //     self.vars.push(var.clone());
+    // }
 }
 
 #[cfg(test)]

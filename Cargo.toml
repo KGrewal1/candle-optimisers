@@ -21,7 +21,8 @@ intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"], option
 [dev-dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
-
+candle-datasets ={ git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
+clap = {version = "4.4.6", features = ["derive"] }
 
 [features]
 default = []

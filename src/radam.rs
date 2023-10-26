@@ -1,6 +1,5 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// R Adam optimizer
 ///
@@ -10,11 +9,17 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct RAdam {
-    vars: Vec<Var>,
+    vars: Vec<VarRAdam>,
     params: ParamsRAdam,
-    moments: HashMap<TensorId, (Tensor, Tensor)>,
     rho_inf: f64,
     t: f64,
+}
+
+#[derive(Debug)]
+struct VarRAdam {
+    theta: Var,
+    m: Var,
+    v: Var,
 }
 
 #[derive(Debug)]
@@ -45,7 +50,15 @@ impl Optimizer for RAdam {
         let vars = vars
             .into_iter()
             .filter(|var| var.dtype().is_float())
-            .collect();
+            .map(|var| {
+                let dtype = var.dtype();
+                let shape = var.shape();
+                let device = var.device();
+                let m = Var::zeros(shape, dtype, device)?;
+                let v = Var::zeros(shape, dtype, device)?;
+                Ok(VarRAdam { theta: var, m, v })
+            })
+            .collect::<Result<Vec<VarRAdam>>>()?;
         // // Err(SGDError::NoMomentum)?;
         // let mut params = params;
         // params.t = 0;
@@ -53,7 +66,6 @@ impl Optimizer for RAdam {
         Ok(Self {
             vars,
             params,
-            moments: HashMap::new(),
             rho_inf,
             t: 1.,
         })
@@ -69,90 +81,51 @@ impl Optimizer for RAdam {
             - 2. * self.t * self.params.beta_2.powf(self.t)
                 / (1. - self.params.beta_2.powf(self.t));
         for var in &self.vars {
-            if let Some(grad) = grads.get(var) {
+            let theta = &var.theta;
+            let m = &var.m;
+            let v = &var.v;
+            if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    if let Some((m, v)) = self.moments.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
-                        let v = ((self.params.beta_2 * v)?
-                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
+                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                        + ((1. - self.params.beta_1) * grad)?)?;
+                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                    let m_hat = (&next_m / (1. - self.params.beta_1.powf(self.t)))?;
 
-                        let delta = if rho_t > 5. {
-                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                                / (&v.sqrt()? + self.params.eps)?)?;
-                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
-                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
-                                .sqrt();
-                            (self.params.lr * r * (l * m_hat)?)?
-                        } else {
-                            (self.params.lr * m_hat)?
-                        };
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
+                    let delta = if rho_t > 5. {
+                        let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                            / (&next_v.sqrt()? + self.params.eps)?)?;
+                        let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                            / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                            .sqrt();
+                        (self.params.lr * r * (l * m_hat)?)?
                     } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
-                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
-
-                        let delta = if rho_t > 5. {
-                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                                / (&v.sqrt()? + self.params.eps)?)?;
-                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
-                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
-                                .sqrt();
-                            (self.params.lr * r * (l * m_hat)?)?
-                        } else {
-                            (self.params.lr * m_hat)?
-                        };
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
+                        (self.params.lr * m_hat)?
                     };
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    v.set(&next_v)?;
                 } else {
-                    let grad = &(grad + (self.params.weight_decay * var.as_tensor())?)?;
-                    if let Some((m, v)) = self.moments.get(&var.id()) {
-                        let m = ((self.params.beta_1 * m)? + ((1. - self.params.beta_1) * grad)?)?;
-                        let v = ((self.params.beta_2 * v)?
-                            + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
+                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
+                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                        + ((1. - self.params.beta_1) * grad)?)?;
+                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                    let m_hat = (&next_m / (1. - self.params.beta_1.powf(self.t)))?;
 
-                        let delta = if rho_t > 5. {
-                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                                / (&v.sqrt()? + self.params.eps)?)?;
-                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
-                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
-                                .sqrt();
-                            (self.params.lr * r * (l * m_hat)?)?
-                        } else {
-                            (self.params.lr * m_hat)?
-                        };
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
+                    let delta = if rho_t > 5. {
+                        let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                            / (&next_v.sqrt()? + self.params.eps)?)?;
+                        let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                            / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                            .sqrt();
+                        (self.params.lr * r * (l * m_hat)?)?
                     } else {
-                        let m = ((1. - self.params.beta_1) * grad)?;
-                        let v = ((1. - self.params.beta_2) * grad.powf(2.)?)?;
-                        let m_hat = (&m / (1. - self.params.beta_1.powf(self.t)))?;
-
-                        let delta = if rho_t > 5. {
-                            let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                                / (&v.sqrt()? + self.params.eps)?)?;
-                            let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
-                                / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
-                                .sqrt();
-                            (self.params.lr * r * (l * m_hat)?)?
-                        } else {
-                            (self.params.lr * m_hat)?
-                        };
-                        var.set(&var.sub(&(delta))?)?;
-                        // println!("m {}", m);
-                        // println!("v {}", v);
-                        self.moments.insert(var.id(), (m, v));
+                        (self.params.lr * m_hat)?
                     };
+                    theta.set(&theta.sub(&(delta))?)?;
+                    m.set(&next_m)?;
+                    v.set(&next_v)?;
                 }
             }
         }
@@ -168,12 +141,12 @@ impl Optimizer for RAdam {
 impl RAdam {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
+        self.vars.into_iter().map(|v| v.theta).collect()
     }
 
-    pub fn push(&mut self, var: &Var) {
-        self.vars.push(var.clone());
-    }
+    // pub fn push(&mut self, var: &Var) {
+    //     self.vars.push(var.clone());
+    // }
 }
 
 #[cfg(test)]
