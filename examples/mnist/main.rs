@@ -1,12 +1,16 @@
 use clap::Parser;
 
 mod models;
+mod optim;
 mod parse_cli;
 mod training;
 
 use models::{LinearModel, Mlp};
-use parse_cli::{Args, TrainingArgs, WhichModel};
+use optim::AdaDelta;
+use parse_cli::{Args, TrainingArgs, WhichModel, WhichOptim};
 use training::training_loop;
+
+use crate::optim::{AdaGrad, AdaMax, NsAdam, RsAdam, RMS, SGD};
 
 pub fn main() -> anyhow::Result<()> {
     let args = Args::parse();
@@ -32,8 +36,34 @@ pub fn main() -> anyhow::Result<()> {
         save: args.save,
     };
 
-    match args.model {
-        WhichModel::Linear => training_loop::<LinearModel>(m, &training_args),
-        WhichModel::Mlp => training_loop::<Mlp>(m, &training_args),
+    match args.optim {
+        WhichOptim::Adadelta => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, AdaDelta>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, AdaDelta>(m, &training_args),
+        },
+        WhichOptim::Adagrad => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, AdaGrad>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, AdaGrad>(m, &training_args),
+        },
+        WhichOptim::Adamax => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, AdaMax>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, AdaMax>(m, &training_args),
+        },
+        WhichOptim::SGD => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, SGD>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, SGD>(m, &training_args),
+        },
+        WhichOptim::NAdam => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, NsAdam>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, NsAdam>(m, &training_args),
+        },
+        WhichOptim::RAdam => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, RsAdam>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, RsAdam>(m, &training_args),
+        },
+        WhichOptim::RMS => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, RMS>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, RMS>(m, &training_args),
+        },
     }
 }

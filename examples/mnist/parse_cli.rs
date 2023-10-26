@@ -13,10 +13,24 @@ pub enum WhichModel {
     Mlp,
 }
 
+#[derive(ValueEnum, Clone)]
+pub enum WhichOptim {
+    Adadelta,
+    Adagrad,
+    Adamax,
+    SGD,
+    NAdam,
+    RAdam,
+    RMS,
+}
+
 #[derive(Parser)]
 pub struct Args {
     #[clap(value_enum, default_value_t = WhichModel::Linear)]
     pub model: WhichModel,
+
+    #[arg(long, value_enum, default_value_t = WhichOptim::Adadelta)]
+    pub optim: WhichOptim,
 
     #[arg(long)]
     pub learning_rate: Option<f64>,

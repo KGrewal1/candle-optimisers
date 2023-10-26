@@ -77,29 +77,28 @@ impl Optimizer for Adadelta {
             let u = &var.u;
             if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    let next_v = ((v.as_tensor() * self.params.rho)?
+                    let v_next = ((v.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * grad.powf(2.)?)?;
                     let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
-                        .div(&((&next_v + self.params.eps)?.powf(0.5)?))?
+                        .div(&((&v_next + self.params.eps)?.powf(0.5)?))?
                         * grad)?;
-                    let next_u = ((u.as_tensor() * self.params.rho)?
+                    let u_next = ((u.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * delta_x.powf(2.)?)?;
                     theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
-                    v.set(&next_v)?;
-                    u.set(&next_u)?;
-                    // self.avg_acc.insert(var.id(), (next_v, next_u));
+                    v.set(&v_next)?;
+                    u.set(&u_next)?;
                 } else {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                    let next_v = ((v.as_tensor() * self.params.rho)?
+                    let v_next = ((v.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * grad.powf(2.)?)?;
                     let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
-                        .div(&((&next_v + self.params.eps)?.powf(0.5)?))?
+                        .div(&((&v_next + self.params.eps)?.powf(0.5)?))?
                         * grad)?;
-                    let next_u = ((u.as_tensor() * self.params.rho)?
+                    let u_next = ((u.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * delta_x.powf(2.)?)?;
                     theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
-                    v.set(&next_v)?;
-                    u.set(&next_u)?;
+                    v.set(&v_next)?;
+                    u.set(&u_next)?;
                 }
             }
         }

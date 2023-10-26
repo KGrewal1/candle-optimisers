@@ -1,9 +1,8 @@
-use crate::{models::Model, parse_cli::TrainingArgs};
+use crate::{models::Model, optim::Optim, parse_cli::TrainingArgs};
 use candle_core::{DType, D};
-use candle_nn::{loss, ops, Optimizer, VarBuilder, VarMap};
-use optimisers::adadelta::ParamsAdaDelta;
+use candle_nn::{loss, ops, VarBuilder, VarMap};
 
-pub fn training_loop<M: Model>(
+pub fn training_loop<M: Model, O: Optim>(
     m: candle_datasets::vision::Dataset,
     args: &TrainingArgs,
 ) -> anyhow::Result<()> {
@@ -32,13 +31,7 @@ pub fn training_loop<M: Model>(
     }
 
     // create an optimizer
-    let mut optimiser = optimisers::adadelta::Adadelta::new(
-        varmap.all_vars(),
-        ParamsAdaDelta {
-            lr: args.learning_rate,
-            ..Default::default()
-        },
-    )?;
+    let mut optimiser = O::new(varmap.all_vars(), args.learning_rate)?;
     // candle_nn::SGD::new(varmap.all_vars(), args.learning_rate)?;
     // load the test images
     let test_images = m.test_images.to_device(&dev)?;

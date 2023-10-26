@@ -86,15 +86,15 @@ impl Optimizer for RAdam {
             let v = &var.v;
             if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                    let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
-                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                    let v_next = ((self.params.beta_2 * v.as_tensor())?
                         + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&next_m / (1. - self.params.beta_1.powf(self.t)))?;
+                    let m_hat = (&m_next / (1. - self.params.beta_1.powf(self.t)))?;
 
                     let delta = if rho_t > 5. {
                         let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                            / (&next_v.sqrt()? + self.params.eps)?)?;
+                            / (&v_next.sqrt()? + self.params.eps)?)?;
                         let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
                             / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
                             .sqrt();
@@ -103,19 +103,19 @@ impl Optimizer for RAdam {
                         (self.params.lr * m_hat)?
                     };
                     theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&next_m)?;
-                    v.set(&next_v)?;
+                    m.set(&m_next)?;
+                    v.set(&v_next)?;
                 } else {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                    let next_m = ((self.params.beta_1 * m.as_tensor())?
+                    let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
-                    let next_v = ((self.params.beta_2 * v.as_tensor())?
+                    let v_next = ((self.params.beta_2 * v.as_tensor())?
                         + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&next_m / (1. - self.params.beta_1.powf(self.t)))?;
+                    let m_hat = (&m_next / (1. - self.params.beta_1.powf(self.t)))?;
 
                     let delta = if rho_t > 5. {
                         let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                            / (&next_v.sqrt()? + self.params.eps)?)?;
+                            / (&v_next.sqrt()? + self.params.eps)?)?;
                         let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
                             / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
                             .sqrt();
@@ -124,8 +124,8 @@ impl Optimizer for RAdam {
                         (self.params.lr * m_hat)?
                     };
                     theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&next_m)?;
-                    v.set(&next_v)?;
+                    m.set(&m_next)?;
+                    v.set(&v_next)?;
                 }
             }
         }

@@ -82,28 +82,28 @@ impl Optimizer for Adamax {
             let u = &var.u;
             if let Some(grad) = grads.get(theta) {
                 if self.params.weight_decay == 0. {
-                    let next_m =
+                    let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
-                    let next_u = (self.params.beta_2 * u.as_tensor())?
+                    let u_next = (self.params.beta_2 * u.as_tensor())?
                         .maximum(&(grad.abs()? + self.params.eps)?)?;
-                    let delta = (&next_m * self.params.lr)?
-                        .div(&(&next_u * (1. - self.params.beta_1.powf(self.t)))?)?;
+                    let delta = (&m_next * self.params.lr)?
+                        .div(&(&u_next * (1. - self.params.beta_1.powf(self.t)))?)?;
                     theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&next_m)?;
-                    u.set(&next_u)?;
-                    self.moment_norm.insert(theta.id(), (next_m, next_u));
+                    m.set(&m_next)?;
+                    u.set(&u_next)?;
+                    self.moment_norm.insert(theta.id(), (m_next, u_next));
                 } else {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                    let next_m =
+                    let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
-                    let next_u = (self.params.beta_2 * u.as_tensor())?
+                    let u_next = (self.params.beta_2 * u.as_tensor())?
                         .maximum(&(grad.abs()? + self.params.eps)?)?;
-                    let delta = (&next_m * self.params.lr)?
-                        .div(&(&next_u * (1. - self.params.beta_1.powf(self.t)))?)?;
+                    let delta = (&m_next * self.params.lr)?
+                        .div(&(&u_next * (1. - self.params.beta_1.powf(self.t)))?)?;
                     theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&next_m)?;
-                    u.set(&next_u)?;
-                    self.moment_norm.insert(theta.id(), (next_m, next_u));
+                    m.set(&m_next)?;
+                    u.set(&u_next)?;
+                    self.moment_norm.insert(theta.id(), (m_next, u_next));
                 }
             }
         }
