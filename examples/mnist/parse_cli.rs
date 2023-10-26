@@ -18,10 +18,10 @@ pub enum WhichOptim {
     Adadelta,
     Adagrad,
     Adamax,
-    SGD,
+    Sgd,
     NAdam,
     RAdam,
-    RMS,
+    Rms,
 }
 
 #[derive(Parser)]

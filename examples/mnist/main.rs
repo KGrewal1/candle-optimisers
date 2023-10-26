@@ -54,7 +54,7 @@ pub fn main() -> anyhow::Result<()> {
             WhichModel::Linear => training_loop::<LinearModel, Adamax>(m, &training_args),
             WhichModel::Mlp => training_loop::<Mlp, Adamax>(m, &training_args),
         },
-        WhichOptim::SGD => match args.model {
+        WhichOptim::Sgd => match args.model {
             WhichModel::Linear => {
                 training_loop::<LinearModel, MomentumEnhancedSGD>(m, &training_args)
             }
@@ -68,7 +68,7 @@ pub fn main() -> anyhow::Result<()> {
             WhichModel::Linear => training_loop::<LinearModel, RAdam>(m, &training_args),
             WhichModel::Mlp => training_loop::<Mlp, RAdam>(m, &training_args),
         },
-        WhichOptim::RMS => match args.model {
+        WhichOptim::Rms => match args.model {
             WhichModel::Linear => training_loop::<LinearModel, RMSprop>(m, &training_args),
             WhichModel::Mlp => training_loop::<Mlp, RMSprop>(m, &training_args),
         },

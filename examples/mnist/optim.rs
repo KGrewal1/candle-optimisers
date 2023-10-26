@@ -15,13 +15,13 @@ pub trait Optim: Sized {
 
 impl Optim for Adadelta {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<Adadelta as Optimizer>::new(
+        <Adadelta as Optimizer>::new(
             vars,
             ParamsAdaDelta {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -31,13 +31,13 @@ impl Optim for Adadelta {
 
 impl Optim for Adagrad {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<Adagrad as Optimizer>::new(
+        <Adagrad as Optimizer>::new(
             vars,
             ParamsAdaGrad {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -47,13 +47,13 @@ impl Optim for Adagrad {
 
 impl Optim for Adamax {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<Adamax as Optimizer>::new(
+        <Adamax as Optimizer>::new(
             vars,
             ParamsAdaMax {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -63,13 +63,13 @@ impl Optim for Adamax {
 
 impl Optim for MomentumEnhancedSGD {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<MomentumEnhancedSGD as Optimizer>::new(
+        <MomentumEnhancedSGD as Optimizer>::new(
             vars,
             ParamsMESGD {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -79,13 +79,13 @@ impl Optim for MomentumEnhancedSGD {
 
 impl Optim for NAdam {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<NAdam as Optimizer>::new(
+        <NAdam as Optimizer>::new(
             vars,
             ParamsNAdam {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -95,13 +95,13 @@ impl Optim for NAdam {
 
 impl Optim for RAdam {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<RAdam as Optimizer>::new(
+        <RAdam as Optimizer>::new(
             vars,
             ParamsRAdam {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -111,13 +111,13 @@ impl Optim for RAdam {
 
 impl Optim for RMSprop {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        Ok(<RMSprop as Optimizer>::new(
+        <RMSprop as Optimizer>::new(
             vars,
             ParamsRMSprop {
                 lr,
                 ..Default::default()
             },
-        )?)
+        )
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {

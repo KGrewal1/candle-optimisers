@@ -21,6 +21,14 @@ A crate for optimisers for use with [candle](https://github.com/huggingface/cand
 
 These are all checked against their pytorch implementation (see pytorch_test.ipynb) and should implement the same functionality (though without some input checking).
 
+## Examples
+
+There is an mnist toy program along with a simple example of adagrad. Whilst the parameters of each method aren't tuned (all default with user input learning rate), the following converges quite nicely:
+
+```cli
+cargo r -r --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
+```
+
 ## Usage
 
 ```cli
