@@ -1,3 +1,5 @@
+//! The R Adam optimiser
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 

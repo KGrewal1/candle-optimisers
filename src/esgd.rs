@@ -1,3 +1,5 @@
+//! Stochastic Gradient Descent with momentum, weight decay and Nestervov momentum
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 

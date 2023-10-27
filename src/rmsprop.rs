@@ -1,3 +1,5 @@
+//! The RMS prop algoirithm
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 

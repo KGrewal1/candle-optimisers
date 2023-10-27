@@ -1,3 +1,5 @@
+//! The N Adam optimiser: Adam with Nesterov momentum
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 

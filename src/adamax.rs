@@ -1,6 +1,7 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+//! The Adamax optimiser
+
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// Adamax optimiser
 ///
@@ -12,7 +13,6 @@ use std::collections::HashMap;
 pub struct Adamax {
     vars: Vec<VarAdaMax>,
     params: ParamsAdaMax,
-    moment_norm: HashMap<TensorId, (Tensor, Tensor)>,
     t: f64,
 }
 
@@ -66,7 +66,6 @@ impl Optimizer for Adamax {
         Ok(Self {
             vars,
             params,
-            moment_norm: HashMap::new(),
             t: 1.,
         })
     }
@@ -91,7 +90,6 @@ impl Optimizer for Adamax {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     u.set(&u_next)?;
-                    self.moment_norm.insert(theta.id(), (m_next, u_next));
                 } else {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next =
@@ -103,7 +101,6 @@ impl Optimizer for Adamax {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     u.set(&u_next)?;
-                    self.moment_norm.insert(theta.id(), (m_next, u_next));
                 }
             }
         }
