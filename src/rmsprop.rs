@@ -296,16 +296,20 @@ impl Optimizer for RMSprop {
     }
 }
 
-// impl RMSprop {
-//     #[must_use]
-//     pub fn into_inner(self) -> Vec<Var> {
-//         self.vars
-//     }
-
-//     pub fn push(&mut self, var: &Var) {
-//         self.vars.push(var.clone());
-//     }
-// }
+impl RMSprop {
+    #[must_use]
+    pub fn into_inner(self) -> Vec<Var> {
+        self.vars
+            .into_iter()
+            .map(|var| match var {
+                VarRMS::RMSProp(var) => var.theta,
+                VarRMS::Centered(var) => var.theta,
+                VarRMS::Momentum(var) => var.theta,
+                VarRMS::MomentumCentered(var) => var.theta,
+            })
+            .collect()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -330,6 +334,18 @@ mod tests {
         assert_approx_eq!(0.004, n_sgd.learning_rate());
         n_sgd.set_learning_rate(0.002);
         assert_approx_eq!(0.002, n_sgd.learning_rate());
+        Ok(())
+    }
+
+    #[test]
+    fn into_inner_test() -> Result<()> {
+        let params = ParamsRMSprop::default();
+        let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
+        let b = Var::new(-2f32, &Device::Cpu)?;
+        let n_sgd = RMSprop::new(vec![w.clone(), b.clone()], params)?;
+        let inner = n_sgd.into_inner();
+        assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
+        assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
         Ok(())
     }
 }
