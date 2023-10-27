@@ -29,6 +29,14 @@ There is an mnist toy program along with a simple example of adagrad. Whilst the
 cargo r -r --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
 ```
 
+For even faster inference try:
+
+```cli
+cargo r -r --features cuda --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
+```
+
+to use the cuda backend.
+
 ## Usage
 
 ```cli

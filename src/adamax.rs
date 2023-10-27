@@ -133,18 +133,12 @@ mod tests {
 
     use anyhow::Result;
     use assert_approx_eq::assert_approx_eq;
-    use candle_core::{Device, Tensor, Var};
-    use candle_nn::{Linear, Module, Optimizer};
+    use candle_core::{Device, Var};
+    use candle_nn::Optimizer;
 
     use super::*;
     #[test]
-    fn insertiontest() -> Result<()> {
-        let w_gen = Tensor::new(&[[3f32, 1.]], &Device::Cpu)?;
-        let b_gen = Tensor::new(-2f32, &Device::Cpu)?;
-        let gen = Linear::new(w_gen, Some(b_gen));
-        let sample_xs = Tensor::new(&[[2f32, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
-        let _sample_ys = gen.forward(&sample_xs)?;
-
+    fn lr_test() -> Result<()> {
         let params = ParamsAdaMax {
             lr: 0.004,
             ..Default::default()
@@ -156,6 +150,18 @@ mod tests {
         assert_approx_eq!(0.004, n_sgd.learning_rate());
         n_sgd.set_learning_rate(0.002);
         assert_approx_eq!(0.002, n_sgd.learning_rate());
+        Ok(())
+    }
+
+    #[test]
+    fn into_inner_test() -> Result<()> {
+        let params = ParamsAdaMax::default();
+        let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
+        let b = Var::new(-2f32, &Device::Cpu)?;
+        let n_sgd = Adamax::new(vec![w.clone(), b.clone()], params)?;
+        let inner = n_sgd.into_inner();
+        assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
+        assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
         Ok(())
     }
 }

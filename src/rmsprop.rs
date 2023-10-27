@@ -313,18 +313,12 @@ mod tests {
 
     use anyhow::Result;
     use assert_approx_eq::assert_approx_eq;
-    use candle_core::{Device, Tensor, Var};
-    use candle_nn::{Linear, Module, Optimizer};
+    use candle_core::{Device, Var};
+    use candle_nn::Optimizer;
 
     use super::*;
     #[test]
-    fn insertiontest() -> Result<()> {
-        let w_gen = Tensor::new(&[[3f32, 1.]], &Device::Cpu)?;
-        let b_gen = Tensor::new(-2f32, &Device::Cpu)?;
-        let gen = Linear::new(w_gen, Some(b_gen));
-        let sample_xs = Tensor::new(&[[2f32, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
-        let _sample_ys = gen.forward(&sample_xs)?;
-
+    fn lr_test() -> Result<()> {
         let params = ParamsRMSprop {
             lr: 0.004,
             ..Default::default()

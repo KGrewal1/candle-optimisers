@@ -206,6 +206,66 @@ fn momentum_sgd_test() -> Result<()> {
     with torch.no_grad():
         m.weight.zero_()
         m.bias.zero_()
+    optimiser = optim.SGD(m.parameters(), lr=0.004, momentum=0.1, nesterov=False, weight_decay = 0.4)
+    # optimiser.zero_grad()
+    for _step in range(100):
+        optimiser.zero_grad()
+        ys = m(sample_xs)
+        loss = ((ys - sample_ys)**2).sum()
+        loss.backward()
+        optimiser.step()
+        # print("Optimizer state begin")
+        # print(optimiser.state)
+        # print("Optimizer state end")
+    print(m.weight)
+    print(m.bias)
+*/
+#[test]
+fn momentum_sgd_decay_test() -> Result<()> {
+    // Generate some linear data, y = 3.x1 + x2 - 2.
+    let w_gen = Tensor::new(&[[3f32, 1.]], &Device::Cpu)?;
+    let b_gen = Tensor::new(-2f32, &Device::Cpu)?;
+    let gen = Linear::new(w_gen, Some(b_gen));
+    let sample_xs = Tensor::new(&[[2f32, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
+    let sample_ys = gen.forward(&sample_xs)?;
+
+    let params = ParamsMESGD {
+        lr: 0.004,
+        weight_decay: 0.4,
+        momentum: 0.1,
+        dampening: 0.0,
+        nesterov: false,
+    };
+    // Now use backprop to run a linear regression between samples and get the coefficients back.
+    let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+    let b = Var::new(0f32, &Device::Cpu)?;
+    let mut n_sgd = MomentumEnhancedSGD::new(vec![w.clone(), b.clone()], params)?;
+    let lin = Linear::new(w.as_tensor().clone(), Some(b.as_tensor().clone()));
+    for _step in 0..100 {
+        let ys = lin.forward(&sample_xs)?;
+        let loss = ys.sub(&sample_ys)?.sqr()?.sum_all()?;
+        n_sgd.backward_step(&loss)?;
+    }
+
+    assert_eq!(to_vec2_round(&w, 4)?, &[[2.8751, 0.8514]]);
+    assert_eq!(to_vec0_round(&b, 4)?, -0.5626);
+    Ok(())
+}
+
+/* The results of this test have been checked against the following PyTorch code.
+    import torch
+    from torch import optim
+
+    w_gen = torch.tensor([[3., 1.]])
+    b_gen = torch.tensor([-2.])
+
+    sample_xs = torch.tensor([[2., 1.], [7., 4.], [-4., 12.], [5., 8.]])
+    sample_ys = sample_xs.matmul(w_gen.t()) + b_gen
+
+    m = torch.nn.Linear(2, 1)
+    with torch.no_grad():
+        m.weight.zero_()
+        m.bias.zero_()
     optimiser = optim.SGD(m.parameters(), lr=0.004, momentum=0.1, nesterov=False, weight_decay = 0.0, dampening = 0.2)
     # optimiser.zero_grad()
     for _step in range(100):
