@@ -4,7 +4,8 @@
     clippy::perf,
     clippy::complexity,
     clippy::style,
-    clippy::cargo
+    clippy::cargo,
+    clippy::imprecise_flops
 )]
 
 //! Optimisers for use with the candle framework for lightweight machine learning.

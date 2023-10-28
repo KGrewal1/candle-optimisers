@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/KGrewal1/optimisers/graph/badge.svg?token=6AFTLS6DFO)](https://codecov.io/gh/KGrewal1/optimisers)
+![Tests](https://github.com/KGrewal1/optimisers/actions/workflows/rust-ci.yml/badge.svg)
 
 A crate for optimisers for use with [candle](https://github.com/huggingface/candle), the minimalist ML framework
 
