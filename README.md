@@ -14,6 +14,10 @@ A crate for optimisers for use with [candle](https://github.com/huggingface/cand
 
 * AdaMax
 
+* Adam
+
+* AdamW (included with Adam as `decoupled_weight_decay`)
+
 * NAdam
 
 * RAdam
@@ -30,7 +34,7 @@ There is an mnist toy program along with a simple example of adagrad. Whilst the
 cargo r -r --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
 ```
 
-For even faster inference try:
+For even faster training try:
 
 ```cli
 cargo r -r --features cuda --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
@@ -48,8 +52,6 @@ cargo add --git https://github.com/KGrewal1/optimisers.git optimisers
 
 Currently unimplemented from pytorch:
 
-* AdamW (see Adam in candle-nn)
-
 * SparseAdam (unsure how to treat sparse tensors in candle)
 
 * ASGD (no pseudocode)
@@ -57,3 +59,11 @@ Currently unimplemented from pytorch:
 * LBFGS (need to reformulate in terms of tensors / no pseudocode)
 
 * Rprop (need to reformulate in terms of tensors)
+
+## Notes
+
+For development, to track state of pytorch methods, use:
+
+```python
+print(optimiser.state)
+```

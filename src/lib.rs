@@ -12,6 +12,7 @@
 //! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
 pub mod adadelta;
 pub mod adagrad;
+pub mod adam;
 pub mod adamax;
 pub mod esgd;
 pub mod nadam;
