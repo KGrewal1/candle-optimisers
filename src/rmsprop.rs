@@ -432,7 +432,6 @@ impl Optimizer for RMSprop {
         self.params.lr
     }
 
-    #[allow(clippy::too_many_lines)]
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         match &self.vars {
             VarRMS::RMSProp(vars) => vars.inner_step(&self.params, grads),
