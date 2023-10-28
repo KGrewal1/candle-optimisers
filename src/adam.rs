@@ -371,6 +371,16 @@ mod tests {
         let inner = n_sgd.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        let params = ParamsAdam {
+            amsgrad: true,
+            ..Default::default()
+        };
+        let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
+        let b = Var::new(-2f32, &Device::Cpu)?;
+        let n_sgd = Adam::new(vec![w.clone(), b.clone()], params)?;
+        let inner = n_sgd.into_inner();
+        assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
+        assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
         Ok(())
     }
 }
