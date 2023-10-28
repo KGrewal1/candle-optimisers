@@ -80,7 +80,7 @@ impl Optimizer for Adagrad {
                 let theta = &var.theta;
                 let sum = &var.sum;
                 if let Some(grad) = grads.get(theta) {
-                    let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
+                    let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
@@ -93,7 +93,7 @@ impl Optimizer for Adagrad {
                 let theta = &var.theta;
                 let sum = &var.sum;
                 if let Some(grad) = grads.get(theta) {
-                    let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
+                    let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =

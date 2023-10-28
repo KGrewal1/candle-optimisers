@@ -38,7 +38,7 @@ struct VecRMSProp(Vec<VarRMSProp>);
 
 impl RmsInner for VecRMSProp {
     fn new(vars: Vec<Var>) -> Result<Self> {
-        Ok(VecRMSProp(
+        Ok(Self(
             vars.into_iter()
                 .filter(|var| var.dtype().is_float())
                 .map(|var| {
@@ -105,7 +105,7 @@ struct VecRmsPropCentered(Vec<VarRMSPropCentered>);
 
 impl RmsInner for VecRmsPropCentered {
     fn new(vars: Vec<Var>) -> Result<Self> {
-        Ok(VecRmsPropCentered(
+        Ok(Self(
             vars.into_iter()
                 .filter(|var| var.dtype().is_float())
                 .map(|var| {
@@ -188,7 +188,7 @@ struct VecRmsPropMomentum(Vec<VarRMSPropMomentum>);
 
 impl RmsInner for VecRmsPropMomentum {
     fn new(vars: Vec<Var>) -> Result<Self> {
-        Ok(VecRmsPropMomentum(
+        Ok(Self(
             vars.into_iter()
                 .filter(|var| var.dtype().is_float())
                 .map(|var| {
@@ -263,7 +263,7 @@ struct VecRmsPropMomentumCentered(Vec<VarRMSPropMomentumCentered>);
 
 impl RmsInner for VecRmsPropMomentumCentered {
     fn new(vars: Vec<Var>) -> Result<Self> {
-        Ok(VecRmsPropMomentumCentered(
+        Ok(Self(
             vars.into_iter()
                 .filter(|var| var.dtype().is_float())
                 .map(|var| {

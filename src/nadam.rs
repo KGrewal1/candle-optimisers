@@ -72,7 +72,7 @@ impl Optimizer for NAdam {
         // let mut params = params;
         // params.t = 0;
         let t = 1.;
-        let mu_t2 = params.beta_1 * (1. - 0.5 * (0.96_f64.powf(t * params.momentum_decay)));
+        let mu_t2 = params.beta_1 * 0.5f64.mul_add(-(0.96_f64.powf(t * params.momentum_decay)), 1.);
         Ok(Self {
             vars,
             params,
@@ -91,7 +91,10 @@ impl Optimizer for NAdam {
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         let mu_t = self.mu_t2;
         let mu_t2 = self.params.beta_1
-            * (1. - 0.5 * (0.96_f64.powf((self.t + 1.) * self.params.momentum_decay)));
+            * 0.5f64.mul_add(
+                -(0.96_f64.powf((self.t + 1.) * self.params.momentum_decay)),
+                1.,
+            );
         let prod = self.prod2;
         let prod2 = prod * mu_t2;
         self.mu_t = mu_t;
@@ -126,7 +129,8 @@ impl Optimizer for NAdam {
                 let v = &var.v;
                 if let Some(grad) = grads.get(theta) {
                     theta.set(
-                        &(theta.as_tensor() * (1. - self.params.lr * self.params.weight_decay))?,
+                        &(theta.as_tensor()
+                            * self.params.lr.mul_add(-self.params.weight_decay, 1.))?,
                     )?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
