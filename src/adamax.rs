@@ -75,12 +75,12 @@ impl Optimizer for Adamax {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        for var in &self.vars {
-            let theta = &var.theta;
-            let m = &var.m;
-            let u = &var.u;
-            if let Some(grad) = grads.get(theta) {
-                if self.params.weight_decay == 0. {
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let u = &var.u;
+                if let Some(grad) = grads.get(theta) {
                     let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
                     let u_next = (self.params.beta_2 * u.as_tensor())?
@@ -90,7 +90,14 @@ impl Optimizer for Adamax {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     u.set(&u_next)?;
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let u = &var.u;
+                if let Some(grad) = grads.get(theta) {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;

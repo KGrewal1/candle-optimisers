@@ -75,19 +75,25 @@ impl Optimizer for Adagrad {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        for var in &self.vars {
-            let theta = &var.theta;
-            let sum = &var.sum;
-            if let Some(grad) = grads.get(theta) {
-                let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
-                if self.params.weight_decay == 0. {
-                    // let gt = (grad + (self.params.weight_decay * var.as_tensor())?)?;
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let sum = &var.sum;
+                if let Some(grad) = grads.get(theta) {
+                    let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
                     sum.set(&current_sum)?;
                     theta.set(&theta.sub(&change)?)?;
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let sum = &var.sum;
+                if let Some(grad) = grads.get(theta) {
+                    let gamma_tilde = self.params.lr / (1. + (self.t * self.params.lr_decay));
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =

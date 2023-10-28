@@ -99,12 +99,12 @@ impl Optimizer for NAdam {
         self.prod = prod;
         self.prod2 = prod2;
         // println!("prod {}", prod);
-        for var in &self.vars {
-            let theta = &var.theta;
-            let m = &var.m;
-            let v = &var.v;
-            if let Some(grad) = grads.get(theta) {
-                if self.params.weight_decay == 0. {
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
                     let v_next = ((self.params.beta_2 * v.as_tensor())?
@@ -117,7 +117,14 @@ impl Optimizer for NAdam {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     v.set(&v_next)?;
-                } else if self.params.decoupled_weight_decay {
+                }
+            }
+        } else if self.params.decoupled_weight_decay {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     theta.set(
                         &(theta.as_tensor() * (1. - self.params.lr * self.params.weight_decay))?,
                     )?;
@@ -133,7 +140,14 @@ impl Optimizer for NAdam {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     v.set(&v_next)?;
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
@@ -150,6 +164,7 @@ impl Optimizer for NAdam {
                 }
             }
         }
+
         self.t += 1.;
         Ok(())
     }
