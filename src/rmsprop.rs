@@ -11,14 +11,86 @@ use candle_nn::optim::Optimizer;
 
 #[derive(Debug)]
 pub struct RMSprop {
-    vars: Vec<VarRMS>,
+    vars: VarRMS,
     params: ParamsRMSprop,
+}
+
+trait RmsInner {
+    fn new(vars: Vec<Var>) -> Result<Self>
+    where
+        Self: Sized;
+    fn into_inner(self) -> Vec<Var>;
+    fn inner_step(
+        &self,
+        params: &ParamsRMSprop,
+        grads: &candle_core::backprop::GradStore,
+    ) -> Result<()>;
 }
 
 #[derive(Debug)]
 struct VarRMSProp {
     theta: Var,
     v: Var,
+}
+
+#[derive(Debug)]
+struct VecRMSProp(Vec<VarRMSProp>);
+
+impl RmsInner for VecRMSProp {
+    fn new(vars: Vec<Var>) -> Result<Self> {
+        Ok(VecRMSProp(
+            vars.into_iter()
+                .filter(|var| var.dtype().is_float())
+                .map(|var| {
+                    let dtype = var.dtype();
+                    let shape = var.shape();
+                    let device = var.device();
+                    let v = Var::zeros(shape, dtype, device)?;
+                    Ok(VarRMSProp { theta: var, v })
+                })
+                .collect::<Result<Vec<VarRMSProp>>>()?,
+        ))
+    }
+
+    fn into_inner(self) -> Vec<Var> {
+        self.0.into_iter().map(|var| var.theta).collect()
+    }
+
+    fn inner_step(
+        &self,
+        params: &ParamsRMSprop,
+        grads: &candle_core::backprop::GradStore,
+    ) -> Result<()> {
+        if params.weight_decay == 0. {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+
+                    let delta = (grad / (v_next.sqrt()? + params.eps)?)?;
+                    theta.set(&theta.sub(&(params.lr * delta)?)?)?;
+                    v.set(&v_next)?;
+                }
+            }
+        } else {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (params.weight_decay * theta.as_tensor())?)?;
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+
+                    let delta = (grad / (v_next.sqrt()? + params.eps)?)?;
+                    theta.set(&theta.sub(&(params.lr * delta)?)?)?;
+                    v.set(&v_next)?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -29,10 +101,153 @@ struct VarRMSPropCentered {
 }
 
 #[derive(Debug)]
+struct VecRmsPropCentered(Vec<VarRMSPropCentered>);
+
+impl RmsInner for VecRmsPropCentered {
+    fn new(vars: Vec<Var>) -> Result<Self> {
+        Ok(VecRmsPropCentered(
+            vars.into_iter()
+                .filter(|var| var.dtype().is_float())
+                .map(|var| {
+                    let dtype = var.dtype();
+                    let shape = var.shape();
+                    let device = var.device();
+                    let v = Var::zeros(shape, dtype, device)?;
+                    let g = Var::zeros(shape, dtype, device)?;
+                    Ok(VarRMSPropCentered { theta: var, v, g })
+                })
+                .collect::<Result<Vec<VarRMSPropCentered>>>()?,
+        ))
+    }
+
+    fn into_inner(self) -> Vec<Var> {
+        self.0.into_iter().map(|var| var.theta).collect()
+    }
+
+    fn inner_step(
+        &self,
+        params: &ParamsRMSprop,
+        grads: &candle_core::backprop::GradStore,
+    ) -> Result<()> {
+        if params.weight_decay == 0. {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                let g_avg = &var.g;
+                if let Some(grad) = grads.get(theta) {
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+                    let (v_tilde, g_next) = {
+                        let g =
+                            ((params.alpha * g_avg.as_tensor())? + ((1. - params.alpha) * grad)?)?;
+                        ((&v_next - g.powf(2.)?)?, g)
+                    };
+
+                    let delta = (grad / (v_tilde.sqrt()? + params.eps)?)?;
+                    theta.set(&theta.sub(&(params.lr * delta)?)?)?;
+                    v.set(&v_next)?;
+                    g_avg.set(&g_next)?;
+                }
+            }
+        } else {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                let g_avg = &var.g;
+                if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (params.weight_decay * theta.as_tensor())?)?;
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+                    let (v_tilde, g_next) = {
+                        let g =
+                            ((params.alpha * g_avg.as_tensor())? + ((1. - params.alpha) * grad)?)?;
+                        ((&v_next - g.powf(2.)?)?, g)
+                    };
+
+                    let delta = (grad / (v_tilde.sqrt()? + params.eps)?)?;
+                    theta.set(&theta.sub(&(params.lr * delta)?)?)?;
+                    v.set(&v_next)?;
+                    g_avg.set(&g_next)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
 struct VarRMSPropMomentum {
     theta: Var,
     v: Var,
     b: Var,
+}
+
+#[derive(Debug)]
+struct VecRmsPropMomentum(Vec<VarRMSPropMomentum>);
+
+impl RmsInner for VecRmsPropMomentum {
+    fn new(vars: Vec<Var>) -> Result<Self> {
+        Ok(VecRmsPropMomentum(
+            vars.into_iter()
+                .filter(|var| var.dtype().is_float())
+                .map(|var| {
+                    let dtype = var.dtype();
+                    let shape = var.shape();
+                    let device = var.device();
+                    let v = Var::zeros(shape, dtype, device)?;
+                    let b = Var::zeros(shape, dtype, device)?;
+                    Ok(VarRMSPropMomentum { theta: var, v, b })
+                })
+                .collect::<Result<Vec<VarRMSPropMomentum>>>()?,
+        ))
+    }
+    fn into_inner(self) -> Vec<Var> {
+        self.0.into_iter().map(|var| var.theta).collect()
+    }
+
+    fn inner_step(
+        &self,
+        params: &ParamsRMSprop,
+        grads: &candle_core::backprop::GradStore,
+    ) -> Result<()> {
+        if params.weight_decay == 0. {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                let b = &var.b;
+                if let Some(grad) = grads.get(theta) {
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+
+                    let b_next = ((params.momentum * b.as_tensor())?
+                        + (grad / (v_next.sqrt()? + params.eps)?)?)?;
+                    theta.set(&theta.sub(&(params.lr * &b_next)?)?)?;
+                    v.set(&v_next)?;
+                    b.set(&b_next)?;
+                }
+            }
+        } else {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                let b = &var.b;
+                if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (params.weight_decay * theta.as_tensor())?)?;
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+
+                    let b_next = ((params.momentum * b.as_tensor())?
+                        + (grad / (v_next.sqrt()? + params.eps)?)?)?;
+                    theta.set(&theta.sub(&(params.lr * &b_next)?)?)?;
+                    v.set(&v_next)?;
+                    b.set(&b_next)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -44,11 +259,101 @@ struct VarRMSPropMomentumCentered {
 }
 
 #[derive(Debug)]
+struct VecRmsPropMomentumCentered(Vec<VarRMSPropMomentumCentered>);
+
+impl RmsInner for VecRmsPropMomentumCentered {
+    fn new(vars: Vec<Var>) -> Result<Self> {
+        Ok(VecRmsPropMomentumCentered(
+            vars.into_iter()
+                .filter(|var| var.dtype().is_float())
+                .map(|var| {
+                    let dtype = var.dtype();
+                    let shape = var.shape();
+                    let device = var.device();
+                    let v = Var::zeros(shape, dtype, device)?;
+                    let b = Var::zeros(shape, dtype, device)?;
+                    let g = Var::zeros(shape, dtype, device)?;
+                    Ok(VarRMSPropMomentumCentered {
+                        theta: var,
+                        v,
+                        b,
+                        g,
+                    })
+                })
+                .collect::<Result<Vec<VarRMSPropMomentumCentered>>>()?,
+        ))
+    }
+
+    fn into_inner(self) -> Vec<Var> {
+        self.0.into_iter().map(|var| var.theta).collect()
+    }
+
+    fn inner_step(
+        &self,
+        params: &ParamsRMSprop,
+        grads: &candle_core::backprop::GradStore,
+    ) -> Result<()> {
+        if params.weight_decay == 0. {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                let g_avg = &var.g;
+                let b = &var.b;
+                if let Some(grad) = grads.get(theta) {
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+
+                    let (v_tilde, g_next) = {
+                        let g =
+                            ((params.alpha * g_avg.as_tensor())? + ((1. - params.alpha) * grad)?)?;
+                        ((&v_next - g.powf(2.)?)?, g)
+                    };
+
+                    let b_next = ((params.momentum * b.as_tensor())?
+                        + (grad / (v_tilde.sqrt()? + params.eps)?)?)?;
+                    theta.set(&theta.sub(&(params.lr * &b_next)?)?)?;
+                    v.set(&v_next)?;
+                    g_avg.set(&g_next)?;
+                    b.set(&b_next)?;
+                }
+            }
+        } else {
+            for var in &self.0 {
+                let theta = &var.theta;
+                let v = &var.v;
+                let g_avg = &var.g;
+                let b = &var.b;
+                if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (params.weight_decay * theta.as_tensor())?)?;
+                    let v_next = ((params.alpha * v.as_tensor())?
+                        + ((1. - params.alpha) * grad.powf(2.)?)?)?;
+
+                    let (v_tilde, g_next) = {
+                        let g =
+                            ((params.alpha * g_avg.as_tensor())? + ((1. - params.alpha) * grad)?)?;
+                        ((&v_next - g.powf(2.)?)?, g)
+                    };
+
+                    let b_next = ((params.momentum * b.as_tensor())?
+                        + (grad / (v_tilde.sqrt()? + params.eps)?)?)?;
+                    theta.set(&theta.sub(&(params.lr * &b_next)?)?)?;
+                    v.set(&v_next)?;
+                    g_avg.set(&g_next)?;
+                    b.set(&b_next)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
 enum VarRMS {
-    RMSProp(VarRMSProp),
-    Centered(VarRMSPropCentered),
-    Momentum(VarRMSPropMomentum),
-    MomentumCentered(VarRMSPropMomentumCentered),
+    RMSProp(VecRMSProp),
+    Centered(VecRmsPropCentered),
+    Momentum(VecRmsPropMomentum),
+    MomentumCentered(VecRmsPropMomentumCentered),
 }
 
 #[derive(Debug)]
@@ -81,76 +386,45 @@ impl Optimizer for RMSprop {
         if params.momentum == 0. && params.centered {
             // no need to have b tensor
             // need to have g tensor
-            let vars = vars
-                .into_iter()
-                .filter(|var| var.dtype().is_float())
-                .map(|var| {
-                    let dtype = var.dtype();
-                    let shape = var.shape();
-                    let device = var.device();
-                    let v = Var::zeros(shape, dtype, device)?;
-                    let g = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::Centered(VarRMSPropCentered { theta: var, v, g }))
-                })
-                .collect::<Result<Vec<VarRMS>>>()?;
-
-            Ok(Self { vars, params })
+            Ok(Self {
+                vars: VarRMS::Centered(VecRmsPropCentered::new(vars)?),
+                params,
+            })
         } else if params.momentum == 0. && !params.centered {
             // no need to have b tensor
             // no need to have g tensor
-            let vars = vars
-                .into_iter()
-                .filter(|var| var.dtype().is_float())
-                .map(|var| {
-                    let dtype = var.dtype();
-                    let shape = var.shape();
-                    let device = var.device();
-                    let v = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::RMSProp(VarRMSProp { theta: var, v }))
-                })
-                .collect::<Result<Vec<VarRMS>>>()?;
+            // let vars = vars
+            //     .into_iter()
+            //     .filter(|var| var.dtype().is_float())
+            //     .map(|var| {
+            //         let dtype = var.dtype();
+            //         let shape = var.shape();
+            //         let device = var.device();
+            //         let v = Var::zeros(shape, dtype, device)?;
+            //         Ok(VarRMS::RMSProp(VarRMSProp { theta: var, v }))
+            //     })
+            //     .collect::<Result<Vec<VarRMS>>>()?;
 
-            Ok(Self { vars, params })
+            Ok(Self {
+                vars: VarRMS::RMSProp(VecRMSProp::new(vars)?),
+                params,
+            })
         } else if params.momentum != 0. && !params.centered {
             // need to have b tensor
             // no need to have g tensor
-            let vars = vars
-                .into_iter()
-                .filter(|var| var.dtype().is_float())
-                .map(|var| {
-                    let dtype = var.dtype();
-                    let shape = var.shape();
-                    let device = var.device();
-                    let v = Var::zeros(shape, dtype, device)?;
-                    let b = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::Momentum(VarRMSPropMomentum { theta: var, v, b }))
-                })
-                .collect::<Result<Vec<VarRMS>>>()?;
 
-            Ok(Self { vars, params })
+            Ok(Self {
+                vars: VarRMS::Momentum(VecRmsPropMomentum::new(vars)?),
+                params,
+            })
         } else {
             // need to have b tensor
             // need to have g tensor
-            let vars = vars
-                .into_iter()
-                .filter(|var| var.dtype().is_float())
-                .map(|var| {
-                    let dtype = var.dtype();
-                    let shape = var.shape();
-                    let device = var.device();
-                    let v = Var::zeros(shape, dtype, device)?;
-                    let b = Var::zeros(shape, dtype, device)?;
-                    let g = Var::zeros(shape, dtype, device)?;
-                    Ok(VarRMS::MomentumCentered(VarRMSPropMomentumCentered {
-                        theta: var,
-                        v,
-                        b,
-                        g,
-                    }))
-                })
-                .collect::<Result<Vec<VarRMS>>>()?;
 
-            Ok(Self { vars, params })
+            Ok(Self {
+                vars: VarRMS::MomentumCentered(VecRmsPropMomentumCentered::new(vars)?),
+                params,
+            })
         }
     }
 
@@ -160,137 +434,13 @@ impl Optimizer for RMSprop {
 
     #[allow(clippy::too_many_lines)]
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        for var in &self.vars {
-            match var {
-                VarRMS::RMSProp(var) => {
-                    let theta = &var.theta;
-                    let v = &var.v;
-                    if let Some(grad) = grads.get(theta) {
-                        if self.params.weight_decay == 0. {
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-
-                            let delta = (grad / (v_next.sqrt()? + self.params.eps)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * delta)?)?)?;
-                            v.set(&v_next)?;
-                        } else {
-                            let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-
-                            let delta = (grad / (v_next.sqrt()? + self.params.eps)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * delta)?)?)?;
-                            v.set(&v_next)?;
-                        }
-                    }
-                }
-                VarRMS::Centered(var) => {
-                    let theta = &var.theta;
-                    let v = &var.v;
-                    let g_avg = &var.g;
-                    if let Some(grad) = grads.get(theta) {
-                        if self.params.weight_decay == 0. {
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-                            let (v_tilde, g_next) = {
-                                let g = ((self.params.alpha * g_avg.as_tensor())?
-                                    + ((1. - self.params.alpha) * grad)?)?;
-                                ((&v_next - g.powf(2.)?)?, g)
-                            };
-
-                            let delta = (grad / (v_tilde.sqrt()? + self.params.eps)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * delta)?)?)?;
-                            v.set(&v_next)?;
-                            g_avg.set(&g_next)?;
-                        } else {
-                            let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-                            let (v_tilde, g_next) = {
-                                let g = ((self.params.alpha * g_avg.as_tensor())?
-                                    + ((1. - self.params.alpha) * grad)?)?;
-                                ((&v_next - g.powf(2.)?)?, g)
-                            };
-
-                            let delta = (grad / (v_tilde.sqrt()? + self.params.eps)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * delta)?)?)?;
-                            v.set(&v_next)?;
-                            g_avg.set(&g_next)?;
-                        }
-                    }
-                }
-                VarRMS::Momentum(var) => {
-                    let theta = &var.theta;
-                    let v = &var.v;
-                    let b = &var.b;
-                    if let Some(grad) = grads.get(theta) {
-                        if self.params.weight_decay == 0. {
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-
-                            let b_next = ((self.params.momentum * b.as_tensor())?
-                                + (grad / (v_next.sqrt()? + self.params.eps)?)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * &b_next)?)?)?;
-                            v.set(&v_next)?;
-                            b.set(&b_next)?;
-                        } else {
-                            let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-
-                            let b_next = ((self.params.momentum * b.as_tensor())?
-                                + (grad / (v_next.sqrt()? + self.params.eps)?)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * &b_next)?)?)?;
-                            v.set(&v_next)?;
-                            b.set(&b_next)?;
-                        }
-                    }
-                }
-                VarRMS::MomentumCentered(var) => {
-                    let theta = &var.theta;
-                    let v = &var.v;
-                    let g_avg = &var.g;
-                    let b = &var.b;
-                    if let Some(grad) = grads.get(theta) {
-                        if self.params.weight_decay == 0. {
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-
-                            let (v_tilde, g_next) = {
-                                let g = ((self.params.alpha * g_avg.as_tensor())?
-                                    + ((1. - self.params.alpha) * grad)?)?;
-                                ((&v_next - g.powf(2.)?)?, g)
-                            };
-
-                            let b_next = ((self.params.momentum * b.as_tensor())?
-                                + (grad / (v_tilde.sqrt()? + self.params.eps)?)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * &b_next)?)?)?;
-                            v.set(&v_next)?;
-                            g_avg.set(&g_next)?;
-                            b.set(&b_next)?;
-                        } else {
-                            let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
-                            let v_next = ((self.params.alpha * v.as_tensor())?
-                                + ((1. - self.params.alpha) * grad.powf(2.)?)?)?;
-
-                            let (v_tilde, g_next) = {
-                                let g = ((self.params.alpha * g_avg.as_tensor())?
-                                    + ((1. - self.params.alpha) * grad)?)?;
-                                ((&v_next - g.powf(2.)?)?, g)
-                            };
-
-                            let b_next = ((self.params.momentum * b.as_tensor())?
-                                + (grad / (v_tilde.sqrt()? + self.params.eps)?)?)?;
-                            theta.set(&theta.sub(&(self.params.lr * &b_next)?)?)?;
-                            v.set(&v_next)?;
-                            g_avg.set(&g_next)?;
-                            b.set(&b_next)?;
-                        }
-                    }
-                }
-            }
+        match &self.vars {
+            VarRMS::RMSProp(vars) => vars.inner_step(&self.params, grads),
+            VarRMS::Centered(vars) => vars.inner_step(&self.params, grads),
+            VarRMS::Momentum(vars) => vars.inner_step(&self.params, grads),
+            VarRMS::MomentumCentered(vars) => vars.inner_step(&self.params, grads),
         }
-        Ok(())
+        // Ok(())
     }
 
     fn set_learning_rate(&mut self, lr: f64) {
@@ -301,15 +451,12 @@ impl Optimizer for RMSprop {
 impl RMSprop {
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
-        self.vars
-            .into_iter()
-            .map(|var| match var {
-                VarRMS::RMSProp(var) => var.theta,
-                VarRMS::Centered(var) => var.theta,
-                VarRMS::Momentum(var) => var.theta,
-                VarRMS::MomentumCentered(var) => var.theta,
-            })
-            .collect()
+        match self.vars {
+            VarRMS::RMSProp(vars) => vars.into_inner(),
+            VarRMS::Centered(vars) => vars.into_inner(),
+            VarRMS::Momentum(vars) => vars.into_inner(),
+            VarRMS::MomentumCentered(vars) => vars.into_inner(),
+        }
     }
 }
 
