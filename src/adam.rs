@@ -9,7 +9,7 @@ use candle_nn::optim::Optimizer;
 ///
 /// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam>
 /// Note that this is the same as pytorch implementation not pseudocode (hat of vmax not max of vhat)
-/// This includes decoupled weight decay (AdamW)
+/// This includes decoupled weight decay (Adam W)
 
 trait AdamInner {
     fn new(vars: Vec<Var>) -> Result<Self>
@@ -257,6 +257,7 @@ enum VarAdam {
     VecAdamAmsgrad(VecAdamAmsgrad),
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct ParamsAdam {
     pub lr: f64,
