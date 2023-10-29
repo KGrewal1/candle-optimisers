@@ -2,6 +2,7 @@ use candle_core::{Result, Tensor, Var};
 use candle_nn::Optimizer;
 use optimisers::adadelta::{Adadelta, ParamsAdaDelta};
 use optimisers::adagrad::{Adagrad, ParamsAdaGrad};
+use optimisers::adam::{Adam, ParamsAdam};
 use optimisers::adamax::{Adamax, ParamsAdaMax};
 use optimisers::esgd::{MomentumEnhancedSGD, ParamsMESGD};
 use optimisers::nadam::{NAdam, ParamsNAdam};
@@ -114,6 +115,22 @@ impl Optim for RMSprop {
         <RMSprop as Optimizer>::new(
             vars,
             ParamsRMSprop {
+                lr,
+                ..Default::default()
+            },
+        )
+    }
+
+    fn back_step(&mut self, loss: &Tensor) -> Result<()> {
+        self.backward_step(loss)
+    }
+}
+
+impl Optim for Adam {
+    fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
+        <Adam as Optimizer>::new(
+            vars,
+            ParamsAdam {
                 lr,
                 ..Default::default()
             },

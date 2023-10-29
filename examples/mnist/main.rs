@@ -7,13 +7,13 @@ mod training;
 
 use models::{LinearModel, Mlp};
 
-use optimisers::adadelta::Adadelta;
 use optimisers::adagrad::Adagrad;
 use optimisers::adamax::Adamax;
 use optimisers::esgd::MomentumEnhancedSGD;
 use optimisers::nadam::NAdam;
 use optimisers::radam::RAdam;
 use optimisers::rmsprop::RMSprop;
+use optimisers::{adadelta::Adadelta, adam::Adam};
 
 use parse_cli::{Args, TrainingArgs, WhichModel, WhichOptim};
 use training::training_loop;
@@ -71,6 +71,10 @@ pub fn main() -> anyhow::Result<()> {
         WhichOptim::Rms => match args.model {
             WhichModel::Linear => training_loop::<LinearModel, RMSprop>(m, &training_args),
             WhichModel::Mlp => training_loop::<Mlp, RMSprop>(m, &training_args),
+        },
+        WhichOptim::Adam => match args.model {
+            WhichModel::Linear => training_loop::<LinearModel, Adam>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, Adam>(m, &training_args),
         },
     }
 }
