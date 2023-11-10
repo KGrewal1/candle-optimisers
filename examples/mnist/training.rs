@@ -38,7 +38,7 @@ pub fn training_loop<M: Model, O: Optim>(
     // load the test labels
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     // loop for model optimisation
-    for epoch in 1..args.epochs {
+    for epoch in 0..args.epochs {
         // get log probabilities of results
         let logits = model.forward(&train_images)?;
         // softmax the log probabilities
@@ -60,7 +60,8 @@ pub fn training_loop<M: Model, O: Optim>(
         // get the accuracy on the test set
         let test_accuracy = sum_ok / test_labels.dims1()? as f32;
         println!(
-            "{epoch:4} train loss: {:8.5} test acc: {:5.2}%",
+            "{:4} train loss: {:8.5} test acc: {:5.2}%",
+            epoch + 1,
             loss.to_scalar::<f32>()?,
             100. * test_accuracy
         );
