@@ -1,7 +1,9 @@
+#[allow(dead_code)]
 pub fn strong_wolfe() {
     todo!("Implement strong_wolfe");
 }
 
+#[allow(dead_code)]
 fn cubic_interpolate(
     x1: f64,
     f1: f64,
@@ -13,12 +15,10 @@ fn cubic_interpolate(
 ) -> f64 {
     let (xmin_bound, xmax_bound) = if let Some(bound) = bounds {
         bound
+    } else if x1 < x2 {
+        (x1, x2)
     } else {
-        if x1 < x2 {
-            (x1, x2)
-        } else {
-            (x2, x1)
-        }
+        (x2, x1)
     };
     let d1 = g1 + g2 - 3. * (f1 - f2) / (x1 - x2);
     let d2_square = d1.powi(2) - g1 * g2;

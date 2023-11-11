@@ -16,10 +16,6 @@ pub enum LineSearch {
 ///
 /// Described in <https://link.springer.com/article/10.1007/BF01589116>]
 
-pub trait ModelLoss: Sized {
-    fn get_loss(&self, xs: &Tensor) -> CResult<Tensor>;
-}
-
 #[derive(Debug)]
 pub struct ParamsLBFGS {
     pub lr: f64,
@@ -69,7 +65,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         let loss = self.model.loss(xs, ys)?;
         let grads = loss.backward()?;
         // let mut evals = 1;
-        let mut q = flatten_grads(self.vars.clone(), grads)?;
+        let mut q = flatten_grads(self.vars.clone(), &grads)?;
         let yk = if let Some(ref last) = self.last_grad {
             last.set(&q)?;
             (&q - last.as_tensor())?
@@ -87,7 +83,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         };
         let mut rhos = Vec::with_capacity(hist_size);
         let mut alphas = Vec::with_capacity(hist_size);
-        for (s, y) in self.hist.iter() {
+        for (s, y) in &self.hist {
             let rho = (y * s)?.sum_all()?.powf(-1.)?;
             let alpha = (&rho * (s * &q)?.sum_all()?)?;
             q = q.sub(&(y * &alpha)?)?;
@@ -117,12 +113,13 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         self.params.lr = lr;
     }
 
+    #[must_use]
     fn into_inner(self) -> Vec<Var> {
-        todo!()
+        self.vars
     }
 }
 
-fn flatten_grads(vs: Vec<Var>, grads: GradStore) -> CResult<Tensor> {
+fn flatten_grads(vs: Vec<Var>, grads: &GradStore) -> CResult<Tensor> {
     let mut flat_grads = Vec::new();
     for v in vs {
         if let Some(grad) = grads.get(&v) {

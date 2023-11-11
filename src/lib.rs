@@ -7,6 +7,7 @@
     clippy::cargo,
     clippy::imprecise_flops
 )]
+#![allow(clippy::missing_errors_doc)]
 
 //! Optimisers for use with the candle framework for lightweight machine learning.
 //! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
