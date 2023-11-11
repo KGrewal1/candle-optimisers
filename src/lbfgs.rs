@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::ops::Add;
 
 use crate::{LossOptimizer, Model};
 use candle_core::Result as CResult;
@@ -139,10 +138,10 @@ fn flatten_grads(vs: Vec<Var>, grads: GradStore) -> CResult<Tensor> {
 fn add_grad(vs: &mut Vec<Var>, flat_tensor: &Tensor) -> CResult<()> {
     let mut offset = 0;
     for var in vs {
-        let n_elems = (&var).elem_count();
+        let n_elems = var.elem_count();
         let tensor = flat_tensor
             .narrow(0, offset, n_elems)?
-            .reshape((&var).shape())?;
+            .reshape(var.shape())?;
         var.set(&var.sub(&tensor)?)?;
         offset += n_elems;
     }
