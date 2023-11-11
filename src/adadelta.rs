@@ -1,3 +1,5 @@
+//! The Adadelta optimiser
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
@@ -71,12 +73,12 @@ impl Optimizer for Adadelta {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        for var in &self.vars {
-            let theta = &var.theta;
-            let v = &var.v;
-            let u = &var.u;
-            if let Some(grad) = grads.get(theta) {
-                if self.params.weight_decay == 0. {
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let v = &var.v;
+                let u = &var.u;
+                if let Some(grad) = grads.get(theta) {
                     let v_next = ((v.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * grad.powf(2.)?)?;
                     let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
@@ -87,7 +89,14 @@ impl Optimizer for Adadelta {
                     theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
                     v.set(&v_next)?;
                     u.set(&u_next)?;
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let v = &var.v;
+                let u = &var.u;
+                if let Some(grad) = grads.get(theta) {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let v_next = ((v.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * grad.powf(2.)?)?;
@@ -102,6 +111,7 @@ impl Optimizer for Adadelta {
                 }
             }
         }
+
         Ok(())
     }
 

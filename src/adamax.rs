@@ -1,6 +1,7 @@
-use candle_core::{Result, Tensor, TensorId, Var};
+//! The Adamax optimiser
+
+use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
-use std::collections::HashMap;
 
 /// Adamax optimiser
 ///
@@ -12,7 +13,6 @@ use std::collections::HashMap;
 pub struct Adamax {
     vars: Vec<VarAdaMax>,
     params: ParamsAdaMax,
-    moment_norm: HashMap<TensorId, (Tensor, Tensor)>,
     t: f64,
 }
 
@@ -66,7 +66,6 @@ impl Optimizer for Adamax {
         Ok(Self {
             vars,
             params,
-            moment_norm: HashMap::new(),
             t: 1.,
         })
     }
@@ -76,12 +75,12 @@ impl Optimizer for Adamax {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        for var in &self.vars {
-            let theta = &var.theta;
-            let m = &var.m;
-            let u = &var.u;
-            if let Some(grad) = grads.get(theta) {
-                if self.params.weight_decay == 0. {
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let u = &var.u;
+                if let Some(grad) = grads.get(theta) {
                     let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
                     let u_next = (self.params.beta_2 * u.as_tensor())?
@@ -91,8 +90,14 @@ impl Optimizer for Adamax {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     u.set(&u_next)?;
-                    self.moment_norm.insert(theta.id(), (m_next, u_next));
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let u = &var.u;
+                if let Some(grad) = grads.get(theta) {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
@@ -103,7 +108,6 @@ impl Optimizer for Adamax {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     u.set(&u_next)?;
-                    self.moment_norm.insert(theta.id(), (m_next, u_next));
                 }
             }
         }

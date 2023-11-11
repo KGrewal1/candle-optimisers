@@ -2,6 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/KGrewal1/optimisers/graph/badge.svg?token=6AFTLS6DFO)](https://codecov.io/gh/KGrewal1/optimisers)
+![Tests](https://github.com/KGrewal1/optimisers/actions/workflows/rust-ci.yml/badge.svg)
+![Tests](https://github.com/KGrewal1/optimisers/actions/workflows/lints.yml/badge.svg)
 
 A crate for optimisers for use with [candle](https://github.com/huggingface/candle), the minimalist ML framework
 
@@ -12,6 +14,10 @@ A crate for optimisers for use with [candle](https://github.com/huggingface/cand
 * AdaDelta
 
 * AdaMax
+
+* Adam
+
+* AdamW (included with Adam as `decoupled_weight_decay`)
 
 * NAdam
 
@@ -29,7 +35,7 @@ There is an mnist toy program along with a simple example of adagrad. Whilst the
 cargo r -r --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
 ```
 
-For even faster inference try:
+For even faster training try:
 
 ```cli
 cargo r -r --features cuda --example mnist mlp --optim r-adam --epochs 2000 --learning-rate 0.025
@@ -47,8 +53,6 @@ cargo add --git https://github.com/KGrewal1/optimisers.git optimisers
 
 Currently unimplemented from pytorch:
 
-* AdamW (see Adam in candle-nn)
-
 * SparseAdam (unsure how to treat sparse tensors in candle)
 
 * ASGD (no pseudocode)
@@ -56,3 +60,11 @@ Currently unimplemented from pytorch:
 * LBFGS (need to reformulate in terms of tensors / no pseudocode)
 
 * Rprop (need to reformulate in terms of tensors)
+
+## Notes
+
+For development, to track state of pytorch methods, use:
+
+```python
+print(optimiser.state)
+```

@@ -1,3 +1,5 @@
+//! The N Adam optimiser: Adam with Nesterov momentum
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
@@ -70,7 +72,7 @@ impl Optimizer for NAdam {
         // let mut params = params;
         // params.t = 0;
         let t = 1.;
-        let mu_t2 = params.beta_1 * (1. - 0.5 * (0.96_f64.powf(t * params.momentum_decay)));
+        let mu_t2 = params.beta_1 * 0.5f64.mul_add(-(0.96_f64.powf(t * params.momentum_decay)), 1.);
         Ok(Self {
             vars,
             params,
@@ -89,7 +91,10 @@ impl Optimizer for NAdam {
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         let mu_t = self.mu_t2;
         let mu_t2 = self.params.beta_1
-            * (1. - 0.5 * (0.96_f64.powf((self.t + 1.) * self.params.momentum_decay)));
+            * 0.5f64.mul_add(
+                -(0.96_f64.powf((self.t + 1.) * self.params.momentum_decay)),
+                1.,
+            );
         let prod = self.prod2;
         let prod2 = prod * mu_t2;
         self.mu_t = mu_t;
@@ -97,12 +102,12 @@ impl Optimizer for NAdam {
         self.prod = prod;
         self.prod2 = prod2;
         // println!("prod {}", prod);
-        for var in &self.vars {
-            let theta = &var.theta;
-            let m = &var.m;
-            let v = &var.v;
-            if let Some(grad) = grads.get(theta) {
-                if self.params.weight_decay == 0. {
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
                     let v_next = ((self.params.beta_2 * v.as_tensor())?
@@ -115,9 +120,17 @@ impl Optimizer for NAdam {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     v.set(&v_next)?;
-                } else if self.params.decoupled_weight_decay {
+                }
+            }
+        } else if self.params.decoupled_weight_decay {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     theta.set(
-                        &(theta.as_tensor() * (1. - self.params.lr * self.params.weight_decay))?,
+                        &(theta.as_tensor()
+                            * self.params.lr.mul_add(-self.params.weight_decay, 1.))?,
                     )?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
@@ -131,7 +144,14 @@ impl Optimizer for NAdam {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     v.set(&v_next)?;
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
@@ -148,6 +168,7 @@ impl Optimizer for NAdam {
                 }
             }
         }
+
         self.t += 1.;
         Ok(())
     }

@@ -22,6 +22,7 @@ pub enum WhichOptim {
     NAdam,
     RAdam,
     Rms,
+    Adam,
 }
 
 #[derive(Parser)]

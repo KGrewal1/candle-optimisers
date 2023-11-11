@@ -1,3 +1,5 @@
+//! The R Adam optimiser
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
@@ -80,12 +82,12 @@ impl Optimizer for RAdam {
         let rho_t = self.rho_inf
             - 2. * self.t * self.params.beta_2.powf(self.t)
                 / (1. - self.params.beta_2.powf(self.t));
-        for var in &self.vars {
-            let theta = &var.theta;
-            let m = &var.m;
-            let v = &var.v;
-            if let Some(grad) = grads.get(theta) {
-                if self.params.weight_decay == 0. {
+        if self.params.weight_decay == 0. {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
                     let v_next = ((self.params.beta_2 * v.as_tensor())?
@@ -105,7 +107,14 @@ impl Optimizer for RAdam {
                     theta.set(&theta.sub(&(delta))?)?;
                     m.set(&m_next)?;
                     v.set(&v_next)?;
-                } else {
+                }
+            }
+        } else {
+            for var in &self.vars {
+                let theta = &var.theta;
+                let m = &var.m;
+                let v = &var.v;
+                if let Some(grad) = grads.get(theta) {
                     let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
@@ -129,6 +138,7 @@ impl Optimizer for RAdam {
                 }
             }
         }
+
         self.t += 1.;
         Ok(())
     }
