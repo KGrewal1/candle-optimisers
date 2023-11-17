@@ -82,7 +82,7 @@ fn lbfgs_test() -> Result<()> {
     let model = LinearModel::new(vs)?;
     let mut lbfgs = Lbfgs::new(varmap.all_vars(), params, model)?;
 
-    for _step in 0..5000 {
+    for _step in 0..50000 {
         println!("start step {}", _step);
         lbfgs.backward_step(&sample_xs, &sample_ys)?;
         println!("end step {}", _step);

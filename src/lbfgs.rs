@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use crate::{LossOptimizer, Model};
 use candle_core::Result as CResult;
-use candle_core::{backprop::GradStore, Tensor, Var};
+use candle_core::{Tensor, Var};
 // use candle_nn::optim::Optimizer;
 
 mod strong_wolfe;
@@ -66,18 +66,21 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     fn backward_step(&mut self, xs: &Tensor, ys: &Tensor) -> CResult<()> {
         let loss = self.model.loss(xs, ys)?;
 
-        let grads = loss.backward()?;
+        // let grads = loss.backward()?;
 
         // let mut evals = 1;
-        let mut q = flatten_grads(self.vars.clone(), &grads)?;
+        let q = flat_grads(&self.vars, loss)?;
 
         let yk = if let Some(ref last) = self.last_grad {
             last.set(&q)?;
             (&q - last.as_tensor())?
         } else {
             self.last_grad = Some(Var::from_tensor(&q)?);
-            q.clone()
+            q.copy()?
         };
+
+        let q = Var::from_tensor(&q)?;
+
         let hist_size = self.hist.len();
         println!("hist_size {}", hist_size);
         let gamma = if let Some((s, y)) = self.hist.back() {
@@ -100,33 +103,33 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .powi(-1);
 
             let alpha = &rho
-                * (s * &q)?
+                * (s * q.as_tensor())?
                     .sum_all()?
                     .to_dtype(candle_core::DType::F64)?
                     .to_scalar::<f64>()?;
 
-            q = q.sub(&(y * alpha)?)?;
+            q.set(&q.sub(&(y * alpha)?)?)?;
 
             alphas.push(alpha);
             rhos.push(rho);
         }
 
-        q = (q * gamma)?;
+        q.set(&(q.as_tensor() * gamma)?)?;
 
         for (((s, y), alpha), rho) in self.hist.iter().zip(alphas).zip(rhos) {
             let beta = rho
-                * (y * &q)?
+                * (y * q.as_tensor())?
                     .sum_all()?
                     .to_dtype(candle_core::DType::F64)?
                     .to_scalar::<f64>()?;
-            q = q.add(&(s * (alpha - beta))?)?;
+            q.set(&q.add(&(s * (alpha - beta))?)?)?;
         }
         add_grad(&mut self.vars, &q)?;
 
         if hist_size == self.params.history_size {
             self.hist.pop_front();
         }
-        self.hist.push_back((q, yk));
+        self.hist.push_back((q.into_inner(), yk));
 
         Ok(())
     }
@@ -145,7 +148,21 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     }
 }
 
-fn flatten_grads(vs: Vec<Var>, grads: &GradStore) -> CResult<Tensor> {
+// fn flatten_grads(vs: &Vec<Var>, grads: &GradStore) -> CResult<Tensor> {
+//     let mut flat_grads = Vec::with_capacity(vs.len());
+//     for v in vs {
+//         if let Some(grad) = grads.get(&v) {
+//             flat_grads.push(grad.flatten_all()?);
+//         } else {
+//             let n_elems = v.elem_count();
+//             flat_grads.push(candle_core::Tensor::zeros(n_elems, v.dtype(), v.device())?);
+//         }
+//     }
+//     candle_core::Tensor::cat(&flat_grads, 0)
+// }
+
+fn flat_grads(vs: &Vec<Var>, loss: Tensor) -> CResult<Tensor> {
+    let grads = loss.backward()?;
     let mut flat_grads = Vec::with_capacity(vs.len());
     for v in vs {
         if let Some(grad) = grads.get(&v) {
