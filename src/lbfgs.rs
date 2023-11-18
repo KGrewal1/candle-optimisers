@@ -82,7 +82,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         let q = Var::from_tensor(&q)?;
 
         let hist_size = self.hist.len();
-        println!("hist_size {}", hist_size);
+
         let gamma = if let Some((s, y)) = self.hist.back() {
             let numr = (y * s)?.sum_all()?;
             let denom = &y.sqr()?.sum_all()?;
