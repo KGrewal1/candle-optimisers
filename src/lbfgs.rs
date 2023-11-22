@@ -68,21 +68,21 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         })
     }
 
-    fn backward_step(&mut self, xs: &Tensor, ys: &Tensor) -> CResult<()> {
-        let loss = self.model.loss(xs, ys)?;
+    fn backward_step(&mut self) -> CResult<()> {
+        let loss = self.model.loss()?; //xs, ys , xs: &Tensor, ys: &Tensor
         println!("loss: {}", loss);
         // let grads = loss.backward()?;
 
         // let mut evals = 1;
-        let grad = flat_grads(&self.vars, loss)?;
-        println!("grad: {}", grad);
-        println!(
-            "max F: {}",
-            grad.abs()?
-                .max(0)?
-                .to_dtype(candle_core::DType::F64)?
-                .to_scalar::<f64>()?
-        );
+        let grad = flat_grads(&self.vars, &loss)?;
+        // println!("grad: {}", grad);
+        // println!(
+        //     "max F: {}",
+        //     grad.abs()?
+        //         .max(0)?
+        //         .to_dtype(candle_core::DType::F64)?
+        //         .to_scalar::<f64>()?
+        // );
         if grad
             .abs()?
             .max(0)?
@@ -103,7 +103,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             self.last_grad = Some(Var::from_tensor(&grad)?);
         }
 
-        println!("grad: {}", grad);
+        // println!("grad: {}", grad);
 
         let q = Var::from_tensor(&grad)?;
 
@@ -120,8 +120,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         // self.s_hist.push_back((q.into_inner(), yk));
 
         let gamma = if let Some((s, y)) = self.s_hist.back() {
-            println!("y: {}", y);
-            println!("s: {}", s);
+            // println!("y: {}", y);
+            // println!("s: {}", s);
             let numr = (y * s)?
                 .sum_all()?
                 .to_dtype(candle_core::DType::F64)?
@@ -132,13 +132,13 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?
                 + 1e-10; // add a little to avoid divide by zero
-            println!("numr: {}", numr);
-            println!("denom: {}", denom);
+                         // println!("numr: {}", numr);
+                         // println!("denom: {}", denom);
             numr / denom
         } else {
             1. // self.learning_rate()
         };
-        println!("gamma: {}", gamma);
+        // println!("gamma: {}", gamma);
 
         let mut rhos = VecDeque::with_capacity(hist_size);
         let mut alphas = VecDeque::with_capacity(hist_size);
@@ -157,7 +157,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .to_scalar::<f64>()?
                 + 1e-10)
                 .powi(-1);
-            println!("rho: {}", rho);
+            // println!("rho: {}", rho);
 
             let alpha = &rho
                 * (s * q.as_tensor())?
@@ -172,11 +172,11 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             alphas.push_front(alpha);
             rhos.push_front(rho);
         }
-        println!("q after loop 1: {}", q);
+        // println!("q after loop 1: {}", q);
 
         // z = q * gamma so use interior mutability of q to set it
         q.set(&(q.as_tensor() * gamma)?)?;
-        println!("q before loop 2: {}", q);
+        // println!("q before loop 2: {}", q);
         for (((s, y), alpha), rho) in self
             .s_hist
             .iter()
@@ -195,7 +195,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             // println!("q: {}", q);
         }
 
-        println!("q after loop 2: {}", q);
+        // println!("q after loop 2: {}", q);
 
         let dd = (&grad * q.as_tensor())?.sum_all()?;
         println!("dd: {}", dd);
@@ -242,11 +242,14 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         } else {
             self.params.lr
         };
-        println!("lr : {lr}");
+        // println!("lr : {lr}");
+
+        let (loss, _grad) = self.directional_evaluate(-lr, q.as_tensor().clone())?;
+        println!("next loss: {}", loss);
 
         q.set(&(q.as_tensor() * -lr)?)?;
 
-        println!("step: {}", q);
+        // println!("step: {}", q);
 
         if let Some(step) = &self.last_step {
             step.set(&q)?;
@@ -256,9 +259,9 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
         add_grad(&mut self.vars, &q.as_tensor())?;
 
-        for v in &self.vars {
-            println!("end of iter: {}", v);
-        }
+        // for v in &self.vars {
+        //     println!("end of iter: {}", v);
+        // }
 
         Ok(())
     }
@@ -277,7 +280,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     }
 }
 
-fn flat_grads(vs: &Vec<Var>, loss: Tensor) -> CResult<Tensor> {
+fn flat_grads(vs: &Vec<Var>, loss: &Tensor) -> CResult<Tensor> {
     let grads = loss.backward()?;
     let mut flat_grads = Vec::with_capacity(vs.len());
     for v in vs {
@@ -304,6 +307,24 @@ fn add_grad(vs: &mut Vec<Var>, flat_tensor: &Tensor) -> CResult<()> {
     Ok(())
 }
 
+// fn set_vs(vs: &mut Vec<Var>, vals: &Vec<Tensor>) -> CResult<()> {
+//     for (var, t) in vs.iter().zip(vals) {
+//         var.set(&t)?;
+//     }
+//     Ok(())
+// }
+
+impl<M: Model> Lbfgs<M> {
+    fn directional_evaluate(&mut self, mag: f64, direction: Tensor) -> CResult<(Tensor, Tensor)> {
+        // let original = self.vars.iter().map(|v| v.as_tensor()).collect();
+        add_grad(&mut self.vars, &(mag * &direction)?)?;
+        let loss = self.model.loss()?;
+        let grad = flat_grads(&self.vars, &loss)?;
+        add_grad(&mut self.vars, &(-mag * direction)?)?;
+        Ok((loss, grad))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // use candle_core::test_utils::{to_vec0_round, to_vec2_round};
@@ -325,12 +346,14 @@ mod tests {
         // Now use backprop to run a linear regression between samples and get the coefficients back.
         pub struct LinearModel {
             linear: candle_nn::Linear,
+            xs: Tensor,
+            ys: Tensor,
         }
 
         impl Model for LinearModel {
-            fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor> {
-                let preds = self.forward(xs)?;
-                let loss = candle_nn::loss::mse(&preds, ys)?;
+            fn loss(&self) -> CResult<Tensor> {
+                let preds = self.forward(&self.xs)?;
+                let loss = candle_nn::loss::mse(&preds, &self.ys)?;
                 Ok(loss)
             }
         }
@@ -338,7 +361,11 @@ mod tests {
         impl LinearModel {
             fn new(vs: VarBuilder) -> CResult<Self> {
                 let linear = candle_nn::linear(2, 1, vs.pp("ln1"))?;
-                Ok(Self { linear })
+                Ok(Self {
+                    linear,
+                    xs: Tensor::new(&[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?,
+                    ys: Tensor::new(&[[7f64], [26.], [0.], [27.]], &Device::Cpu)?,
+                })
             }
 
             fn forward(&self, xs: &Tensor) -> CResult<Tensor> {

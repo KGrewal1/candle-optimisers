@@ -7,7 +7,11 @@
     clippy::cargo,
     clippy::imprecise_flops
 )]
-#![allow(clippy::missing_errors_doc)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::too_many_lines,
+    clippy::uninlined_format_args
+)]
 
 //! Optimisers for use with the candle framework for lightweight machine learning.
 //! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
@@ -15,7 +19,6 @@
 use candle_core::Result as CResult;
 use candle_core::Tensor;
 use candle_core::Var;
-use candle_nn::VarBuilder;
 pub mod adadelta;
 pub mod adagrad;
 pub mod adam;
@@ -36,7 +39,7 @@ pub trait Model: Sized {
     // // forward pass through network
     // fn forward(&self, xs: &Tensor) -> CResult<Tensor>;
     // pass comparing to actual to get loss
-    fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor>;
+    fn loss(&self) -> CResult<Tensor>; //, xs: &Tensor, ys: &Tensor
 }
 
 /// trait for optimisers like LBFGS that need the ability to calculate the loss
@@ -44,7 +47,7 @@ pub trait Model: Sized {
 pub trait LossOptimizer<M: Model>: Sized {
     type Config: Sized;
     fn new(vs: Vec<Var>, params: Self::Config, model: M) -> CResult<Self>;
-    fn backward_step(&mut self, xs: &Tensor, ys: &Tensor) -> CResult<()>;
+    fn backward_step(&mut self) -> CResult<()>; //, xs: &Tensor, ys: &Tensor
     fn learning_rate(&self) -> f64;
     fn set_learning_rate(&mut self, lr: f64);
     fn into_inner(self) -> Vec<Var>;

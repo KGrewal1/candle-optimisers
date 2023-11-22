@@ -44,10 +44,10 @@ use optimisers::{LossOptimizer, Model};
 #[test]
 fn lbfgs_test() -> Result<()> {
     // Generate some linear data, y = 3.x1 + x2 - 2.
-    let w_gen = Tensor::new(&[[3f32, 1.]], &Device::Cpu)?;
-    let b_gen = Tensor::new(-2f32, &Device::Cpu)?;
+    let w_gen = Tensor::new(&[[3f64, 1.]], &Device::Cpu)?;
+    let b_gen = Tensor::new(-2f64, &Device::Cpu)?;
     let gen = Linear::new(w_gen, Some(b_gen));
-    let sample_xs = Tensor::new(&[[2f32, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
+    let sample_xs = Tensor::new(&[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
     let sample_ys = gen.forward(&sample_xs)?;
 
     #[derive(Debug, Clone)]
@@ -57,18 +57,19 @@ fn lbfgs_test() -> Result<()> {
     }
 
     impl Model for RosenbrockModel {
-        fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor> {
-            self.forward(xs)
+        fn loss(&self) -> CResult<Tensor> {
+            //, xs: &Tensor, ys: &Tensor
+            self.forward()
         }
     }
 
     impl RosenbrockModel {
         fn new() -> CResult<Self> {
             let x_pos = candle_core::Var::from_tensor(
-                &(10. * Tensor::ones((1, 1), DType::F32, &Device::Cpu)?)?,
+                &(10. * Tensor::ones((1, 1), DType::F64, &Device::Cpu)?)?,
             )?;
             let y_pos = candle_core::Var::from_tensor(
-                &(10. * Tensor::ones((1, 1), DType::F32, &Device::Cpu)?)?,
+                &(10. * Tensor::ones((1, 1), DType::F64, &Device::Cpu)?)?,
             )?;
             Ok(Self { x_pos, y_pos })
         }
@@ -76,7 +77,8 @@ fn lbfgs_test() -> Result<()> {
             vec![self.x_pos.clone(), self.y_pos.clone()]
         }
 
-        fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
+        fn forward(&self) -> CResult<Tensor> {
+            //, xs: &Tensor
             (1. - self.x_pos.as_tensor())?.powf(2.)?
                 + 100. * (self.y_pos.as_tensor() - self.x_pos.as_tensor().powf(2.)?)?.powf(2.)?
         }
@@ -96,8 +98,8 @@ fn lbfgs_test() -> Result<()> {
         for v in model.vars() {
             println!("{}", v);
         }
-        lbfgs.backward_step(&sample_xs, &sample_ys)?;
-        // println!("end step {}", _step);
+        lbfgs.backward_step()?; //&sample_xs, &sample_ys
+                                // println!("end step {}", _step);
     }
     for v in model.vars() {
         println!("{}", v);
