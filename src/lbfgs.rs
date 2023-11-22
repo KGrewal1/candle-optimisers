@@ -17,6 +17,7 @@ pub enum LineSearch {
 /// Described in <https://link.springer.com/article/10.1007/BF01589116>]
 ///
 /// https://sagecal.sourceforge.net/pytorch/index.html
+/// https://github.com/hjmshi/PyTorch-LBFGS/blob/master/functions/LBFGS.py
 
 #[derive(Debug)]
 pub struct ParamsLBFGS {
@@ -43,9 +44,11 @@ impl Default for ParamsLBFGS {
 pub struct Lbfgs<M: Model> {
     vars: Vec<Var>,
     model: M,
-    hist: VecDeque<(Tensor, Tensor)>,
+    s_hist: VecDeque<(Tensor, Tensor)>,
     last_grad: Option<Var>,
+    last_step: Option<Var>,
     params: ParamsLBFGS,
+    first: bool,
     // avg_acc: HashMap<TensorId, (Tensor, Tensor)>,
 }
 
@@ -57,50 +60,104 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         Ok(Lbfgs {
             vars: vs,
             model,
-            hist: VecDeque::with_capacity(hist_size),
+            s_hist: VecDeque::with_capacity(hist_size),
+            last_step: None,
             last_grad: None,
             params,
+            first: true,
         })
     }
 
     fn backward_step(&mut self, xs: &Tensor, ys: &Tensor) -> CResult<()> {
         let loss = self.model.loss(xs, ys)?;
-
+        println!("loss: {}", loss);
         // let grads = loss.backward()?;
 
         // let mut evals = 1;
-        let q = flat_grads(&self.vars, loss)?;
-
-        let yk = if let Some(ref last) = self.last_grad {
-            last.set(&q)?;
-            (&q - last.as_tensor())?
-        } else {
-            self.last_grad = Some(Var::from_tensor(&q)?);
-            q.copy()?
-        };
-
-        let q = Var::from_tensor(&q)?;
-
-        let hist_size = self.hist.len();
-
-        let gamma = if let Some((s, y)) = self.hist.back() {
-            let numr = (y * s)?.sum_all()?;
-            let denom = &y.sqr()?.sum_all()?;
-            (numr / denom)?
+        let grad = flat_grads(&self.vars, loss)?;
+        println!("grad: {}", grad);
+        println!(
+            "max F: {}",
+            grad.abs()?
+                .max(0)?
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?
-        } else {
-            self.learning_rate()
-        };
+        );
+        if grad
+            .abs()?
+            .max(0)?
+            .to_dtype(candle_core::DType::F64)?
+            .to_scalar::<f64>()?
+            < 1e-6
+        {
+            println!("grad is small enough");
+            return Ok(());
+        }
 
-        let mut rhos = Vec::with_capacity(hist_size);
-        let mut alphas = Vec::with_capacity(hist_size);
-        for (s, y) in &self.hist {
-            let rho = (y * s)?
+        let mut yk = None;
+
+        if let Some(last) = &self.last_grad {
+            yk = Some((&grad - last.as_tensor())?);
+            last.set(&grad)?;
+        } else {
+            self.last_grad = Some(Var::from_tensor(&grad)?);
+        }
+
+        println!("grad: {}", grad);
+
+        let q = Var::from_tensor(&grad)?;
+
+        let hist_size = self.s_hist.len();
+
+        if hist_size == self.params.history_size {
+            self.s_hist.pop_front();
+        }
+        if let Some(yk) = yk {
+            if let Some(step) = &self.last_step {
+                self.s_hist.push_back((step.as_tensor().clone(), yk));
+            }
+        }
+        // self.s_hist.push_back((q.into_inner(), yk));
+
+        let gamma = if let Some((s, y)) = self.s_hist.back() {
+            println!("y: {}", y);
+            println!("s: {}", s);
+            let numr = (y * s)?
+                .sum_all()?
+                .to_dtype(candle_core::DType::F64)?
+                .to_scalar::<f64>()?;
+            let denom = &y
+                .sqr()?
                 .sum_all()?
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?
+                + 1e-10; // add a little to avoid divide by zero
+            println!("numr: {}", numr);
+            println!("denom: {}", denom);
+            numr / denom
+        } else {
+            1. // self.learning_rate()
+        };
+        println!("gamma: {}", gamma);
+
+        let mut rhos = VecDeque::with_capacity(hist_size);
+        let mut alphas = VecDeque::with_capacity(hist_size);
+        for (s, y) in self.s_hist.iter().rev() {
+            // alt dot product? println!("test: {}", test);
+            // let test = y
+            //     .reshape((1, ()))?
+            //     .matmul(&s.reshape(((), 1))?)?
+            //     .to_dtype(candle_core::DType::F64)?
+            //     .reshape(())?
+            //     .to_scalar::<f64>()?
+            //     .powf(-1.);
+            let rho = ((y * s)?
+                .sum_all()?
+                .to_dtype(candle_core::DType::F64)?
+                .to_scalar::<f64>()?
+                + 1e-10)
                 .powi(-1);
+            println!("rho: {}", rho);
 
             let alpha = &rho
                 * (s * q.as_tensor())?
@@ -109,27 +166,99 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                     .to_scalar::<f64>()?;
 
             q.set(&q.sub(&(y * alpha)?)?)?;
-
-            alphas.push(alpha);
-            rhos.push(rho);
+            // println!("alpha: {}", alpha);
+            // println!("rho: {}", rho);
+            // we are iterating in reverse and so want to insert at the front of the VecDeque
+            alphas.push_front(alpha);
+            rhos.push_front(rho);
         }
+        println!("q after loop 1: {}", q);
 
+        // z = q * gamma so use interior mutability of q to set it
         q.set(&(q.as_tensor() * gamma)?)?;
-
-        for (((s, y), alpha), rho) in self.hist.iter().zip(alphas).zip(rhos) {
+        println!("q before loop 2: {}", q);
+        for (((s, y), alpha), rho) in self
+            .s_hist
+            .iter()
+            .zip(alphas.into_iter())
+            .zip(rhos.into_iter())
+        {
+            // println!("alpha: {}", alpha);
+            // println!("rho: {}", rho);
             let beta = rho
                 * (y * q.as_tensor())?
                     .sum_all()?
                     .to_dtype(candle_core::DType::F64)?
                     .to_scalar::<f64>()?;
+            // println!("beta: {}", beta);
             q.set(&q.add(&(s * (alpha - beta))?)?)?;
+            // println!("q: {}", q);
         }
-        add_grad(&mut self.vars, &q)?;
 
-        if hist_size == self.params.history_size {
-            self.hist.pop_front();
+        println!("q after loop 2: {}", q);
+
+        let dd = (&grad * q.as_tensor())?.sum_all()?;
+        println!("dd: {}", dd);
+        if dd.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()? < 0. {
+            println!("WARN: Maximising step");
+            // q.set(&(q.as_tensor() * -1.)?)?; // flip the sign
+
+            // if let Some(ref last) = self.last_grad {
+            //     yk = ((-1. * &grad)? - last.as_tensor())?;
+            //     last.set(&(-1. * &grad)?)?;
+            // } else {
+            //     self.last_grad = Some(Var::from_tensor(&(-1. * &grad)?)?);
+            //     yk = (-1. * grad.copy()?)?
+            // };
+
+            // if let Some(ref last) = self.last_grad {
+            //     yk = (&grad - last.as_tensor())?;
+            //     last.set(&grad)?;
+            // } else {
+            //     self.last_grad = Some(Var::from_tensor(&grad)?);
+            //     yk = grad.copy()?
+            // };
         }
-        self.hist.push_back((q.into_inner(), yk));
+        // else {
+        //     if let Some(ref last) = self.last_grad {
+        //         yk = (&grad - last.as_tensor())?;
+        //         last.set(&grad)?;
+        //     } else {
+        //         self.last_grad = Some(Var::from_tensor(&grad)?);
+        //         yk = grad.copy()?
+        //     };
+        // }
+
+        // println!("yk: {}", yk);
+        let lr = if self.first {
+            self.first = false;
+            1_f64.min(
+                1. / (&grad)
+                    .abs()?
+                    .sum_all()?
+                    .to_dtype(candle_core::DType::F64)?
+                    .to_scalar::<f64>()?,
+            ) * self.params.lr
+        } else {
+            self.params.lr
+        };
+        println!("lr : {lr}");
+
+        q.set(&(q.as_tensor() * -lr)?)?;
+
+        println!("step: {}", q);
+
+        if let Some(step) = &self.last_step {
+            step.set(&q)?;
+        } else {
+            self.last_step = Some(Var::from_tensor(&q)?);
+        }
+
+        add_grad(&mut self.vars, &q.as_tensor())?;
+
+        for v in &self.vars {
+            println!("end of iter: {}", v);
+        }
 
         Ok(())
     }
@@ -147,19 +276,6 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         self.vars
     }
 }
-
-// fn flatten_grads(vs: &Vec<Var>, grads: &GradStore) -> CResult<Tensor> {
-//     let mut flat_grads = Vec::with_capacity(vs.len());
-//     for v in vs {
-//         if let Some(grad) = grads.get(&v) {
-//             flat_grads.push(grad.flatten_all()?);
-//         } else {
-//             let n_elems = v.elem_count();
-//             flat_grads.push(candle_core::Tensor::zeros(n_elems, v.dtype(), v.device())?);
-//         }
-//     }
-//     candle_core::Tensor::cat(&flat_grads, 0)
-// }
 
 fn flat_grads(vs: &Vec<Var>, loss: Tensor) -> CResult<Tensor> {
     let grads = loss.backward()?;
@@ -182,7 +298,7 @@ fn add_grad(vs: &mut Vec<Var>, flat_tensor: &Tensor) -> CResult<()> {
         let tensor = flat_tensor
             .narrow(0, offset, n_elems)?
             .reshape(var.shape())?;
-        var.set(&var.sub(&tensor)?)?;
+        var.set(&var.add(&tensor)?)?;
         offset += n_elems;
     }
     Ok(())
@@ -212,6 +328,14 @@ mod tests {
         }
 
         impl Model for LinearModel {
+            fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor> {
+                let preds = self.forward(xs)?;
+                let loss = candle_nn::loss::mse(&preds, ys)?;
+                Ok(loss)
+            }
+        }
+
+        impl LinearModel {
             fn new(vs: VarBuilder) -> CResult<Self> {
                 let linear = candle_nn::linear(2, 1, vs.pp("ln1"))?;
                 Ok(Self { linear })
@@ -219,11 +343,6 @@ mod tests {
 
             fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
                 self.linear.forward(xs)
-            }
-            fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor> {
-                let preds = self.forward(xs)?;
-                let loss = candle_nn::loss::mse(&preds, ys)?;
-                Ok(loss)
             }
         }
 

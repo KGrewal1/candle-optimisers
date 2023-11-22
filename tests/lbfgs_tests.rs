@@ -50,44 +50,60 @@ fn lbfgs_test() -> Result<()> {
     let sample_xs = Tensor::new(&[[2f32, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
     let sample_ys = gen.forward(&sample_xs)?;
 
-    pub struct LinearModel {
-        linear: candle_nn::Linear,
+    #[derive(Debug, Clone)]
+    pub struct RosenbrockModel {
+        x_pos: candle_core::Var,
+        y_pos: candle_core::Var,
     }
 
-    impl Model for LinearModel {
-        fn new(vs: VarBuilder) -> CResult<Self> {
-            let linear = candle_nn::linear(2, 1, vs.pp("ln1"))?;
-            Ok(Self { linear })
+    impl Model for RosenbrockModel {
+        fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor> {
+            self.forward(xs)
+        }
+    }
+
+    impl RosenbrockModel {
+        fn new() -> CResult<Self> {
+            let x_pos = candle_core::Var::from_tensor(
+                &(10. * Tensor::ones((1, 1), DType::F32, &Device::Cpu)?)?,
+            )?;
+            let y_pos = candle_core::Var::from_tensor(
+                &(10. * Tensor::ones((1, 1), DType::F32, &Device::Cpu)?)?,
+            )?;
+            Ok(Self { x_pos, y_pos })
+        }
+        fn vars(&self) -> Vec<candle_core::Var> {
+            vec![self.x_pos.clone(), self.y_pos.clone()]
         }
 
         fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
-            self.linear.forward(xs)
-        }
-        fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor> {
-            let preds = self.forward(xs)?;
-            let loss = candle_nn::loss::mse(&preds, ys)?;
-            Ok(loss)
+            (1. - self.x_pos.as_tensor())?.powf(2.)?
+                + 100. * (self.y_pos.as_tensor() - self.x_pos.as_tensor().powf(2.)?)?.powf(2.)?
         }
     }
 
     let params = ParamsLBFGS {
-        lr: 0.004,
+        lr: 1.,
         ..Default::default()
     };
 
-    // create a new variable store
-    let varmap = VarMap::new();
-    // create a new variable builder
-    let vs = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
-    let model = LinearModel::new(vs)?;
-    let mut lbfgs = Lbfgs::new(varmap.all_vars(), params, model)?;
+    let model = RosenbrockModel::new()?;
 
-    for _step in 0..500_000 {
-        // println!("start step {}", _step);
+    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+
+    for step in 0..500 {
+        println!("\nstart step {}", step);
+        for v in model.vars() {
+            println!("{}", v);
+        }
         lbfgs.backward_step(&sample_xs, &sample_ys)?;
         // println!("end step {}", _step);
     }
-    // panic!("stop");
+    for v in model.vars() {
+        println!("{}", v);
+    }
+    // println!("{:?}", lbfgs);
+    panic!("deliberate panic");
 
     Ok(())
 }

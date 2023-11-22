@@ -32,9 +32,9 @@ pub mod rmsprop;
 /// This is largely the same as the trait defined in the MNIST example in the main candle repo
 pub trait Model: Sized {
     // initialise
-    fn new(vs: VarBuilder) -> CResult<Self>;
-    // forward pass through network
-    fn forward(&self, xs: &Tensor) -> CResult<Tensor>;
+    // fn new(vs: VarBuilder) -> CResult<Self>;
+    // // forward pass through network
+    // fn forward(&self, xs: &Tensor) -> CResult<Tensor>;
     // pass comparing to actual to get loss
     fn loss(&self, xs: &Tensor, ys: &Tensor) -> CResult<Tensor>;
 }

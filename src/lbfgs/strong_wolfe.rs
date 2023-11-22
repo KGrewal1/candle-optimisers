@@ -5,11 +5,17 @@ pub fn strong_wolfe() {
 
 #[allow(dead_code)]
 fn cubic_interpolate(
+    // position 1
     x1: f64,
+    // f(x1)
     f1: f64,
+    // f'(x1)
     g1: f64,
+    // position 2
     x2: f64,
+    // f(x2)
     f2: f64,
+    // f'(x2)
     g2: f64,
     bounds: Option<(f64, f64)>,
 ) -> f64 {
