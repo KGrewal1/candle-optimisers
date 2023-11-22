@@ -1,5 +1,6 @@
 use candle_core::Result as CResult;
 use candle_core::Tensor;
+use candle_core::Var;
 #[allow(dead_code)]
 // pub fn strong_wolfe() {
 //     todo!("Implement strong_wolfe");
@@ -61,24 +62,26 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
         .max(0)?
         .to_dtype(candle_core::DType::F64)?
         .to_scalar::<f64>()?;
-    let g = g.clone();
+    // let g = g.clone();
     // evaluate objective and gradient using initial step
-    let (mut f_new, mut g_new) = obj_func(&x, t, &d);
+    let (mut f_new, g_new) = obj_func(&x, t, &d);
+    let g_new = Var::from_tensor(&g_new)?;
     let mut ls_func_evals = 1;
-    let mut gtd_new = (&g_new * &d)?
+    let mut gtd_new = (g_new.as_tensor() * &d)?
         .sum_all()?
         .to_dtype(candle_core::DType::F64)?
         .to_scalar::<f64>()?;
 
     // bracket an interval containing a point satisfying the Wolfe criteria
-    let (mut t_prev, mut f_prev, mut g_prev, mut gtd_prev) = (0., f, g.clone(), gtd);
+    let g_prev = Var::from_tensor(&g)?;
+    let (mut t_prev, mut f_prev, mut gtd_prev) = (0., f, gtd);
     let mut done = false;
     let mut ls_iter = 0;
     // let mut bracket;
     // let mut bracket_f;
     // let mut bracket_g;
     let mut bracket_gtd;
-    let (mut bracket, mut bracket_f, mut bracket_g) = loop {
+    let (mut bracket, mut bracket_f, bracket_g) = loop {
         //while ls_iter < max_ls
         // check conditions
         if f_new > (f + c1 * t * gtd) || (ls_iter > 1 && f_new >= f_prev) {
@@ -86,7 +89,11 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
             // bracket_f = [f_prev, f_new];
             // bracket_g = [g_prev, g_new.clone()];
             bracket_gtd = [gtd_prev, gtd_new];
-            break ([t_prev, t], [f_prev, f_new], [g_prev, g_new.clone()]);
+            break (
+                [t_prev, t],
+                [f_prev, f_new],
+                [g_prev, Var::from_tensor(g_new.as_tensor())?],
+            );
         }
 
         if gtd_new.abs() <= -c2 * gtd {
@@ -95,7 +102,14 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
             // bracket_g = [g_new.clone(), g_new.clone()];
             done = true;
             bracket_gtd = [gtd_prev, gtd_new];
-            break ([t, t], [f_new, f_new], [g_new.clone(), g_new.clone()]);
+            break (
+                [t, t],
+                [f_new, f_new],
+                [
+                    Var::from_tensor(g_new.as_tensor())?,
+                    Var::from_tensor(g_new.as_tensor())?,
+                ],
+            );
         }
 
         if gtd_new >= 0. {
@@ -103,7 +117,11 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
             // bracket_f = [f_prev, f_new];
             // bracket_g = [g_prev, g_new.clone()];
             bracket_gtd = [gtd_prev, gtd_new];
-            break ([t_prev, t], [f_prev, f_new], [g_prev, g_new.clone()]);
+            break (
+                [t_prev, t],
+                [f_prev, f_new],
+                [g_prev, Var::from_tensor(g_new.as_tensor())?],
+            );
         }
 
         // interpolate
@@ -123,11 +141,16 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
         // next step
         t_prev = tmp;
         f_prev = f_new;
-        g_prev = g_new.clone();
+        g_prev.set(g_new.as_tensor())?;
         gtd_prev = gtd_new;
-        (f_new, g_new) = obj_func(&x, t, &d);
+        // assign to temp vars: (f_new, g_new) = obj_func(&x, t, &d);
+        let (next_f, next_g) = obj_func(&x, t, &d);
+        // overwrite
+        f_new = next_f;
+        g_new.set(&next_g)?;
+        //
         ls_func_evals += 1;
-        gtd_new = (&g_new * &d)?
+        gtd_new = (g_new.as_tensor() * &d)?
             .sum_all()?
             .to_dtype(candle_core::DType::F64)?
             .to_scalar::<f64>()?;
@@ -139,7 +162,11 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
             // let bracket_f = [f, f_new];
             // let bracket_g = [g, g_new];
             bracket_gtd = [gtd_prev, gtd_new];
-            break ([0., t], [f, f_new], [g, g_new]);
+            break (
+                [0., t],
+                [f, f_new],
+                [Var::from_tensor(&g)?, Var::from_tensor(g_new.as_tensor())?],
+            );
         }
     };
 
@@ -198,9 +225,13 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
         }
 
         // Evaluate new point
-        (f_new, g_new) = obj_func(&x, t, &d);
+        // assign to temp vars: (f_new, g_new) = obj_func(&x, t, &d);
+        let (next_f, next_g) = obj_func(&x, t, &d);
+        // overwrite
+        f_new = next_f;
+        g_new.set(&next_g)?;
         ls_func_evals += 1;
-        gtd_new = (&g_new * &d)?
+        gtd_new = (g_new.as_tensor() * &d)?
             .sum_all()?
             .to_dtype(candle_core::DType::F64)?
             .to_scalar::<f64>()?;
@@ -210,7 +241,7 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
             // Armijo condition not satisfied or not lower than lowest point
             bracket[high_pos] = t;
             bracket_f[high_pos] = f_new;
-            bracket_g[high_pos] = g_new.clone();
+            bracket_g[high_pos].set(g_new.as_tensor())?; //.clone()
             bracket_gtd[high_pos] = gtd_new;
             (low_pos, high_pos) = if bracket_f[0] <= bracket_f[1] {
                 (0, 1)
@@ -225,14 +256,14 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
                 // old high becomes new low
                 bracket[high_pos] = bracket[low_pos];
                 bracket_f[high_pos] = bracket_f[low_pos];
-                bracket_g[high_pos] = bracket_g[low_pos].clone();
+                bracket_g[high_pos].set(bracket_g[low_pos].as_tensor())?;
                 bracket_gtd[high_pos] = bracket_gtd[low_pos]
             }
 
             // new point becomes new low
             bracket[low_pos] = t;
             bracket_f[low_pos] = f_new;
-            bracket_g[low_pos] = g_new.clone();
+            bracket_g[low_pos].set(g_new.as_tensor())?;
             bracket_gtd[low_pos] = gtd_new;
         }
     }
@@ -242,5 +273,10 @@ fn strong_wolfe<F: FnMut(&Tensor, f64, &Tensor) -> (f64, Tensor)>(
     f_new = bracket_f[low_pos];
     // g_new = ;
     // f_new, g_new, t, ls_func_evals;
-    Ok((f_new, bracket_g[low_pos].clone(), t, ls_func_evals))
+    Ok((
+        f_new,
+        bracket_g[low_pos].clone().into_inner(),
+        t,
+        ls_func_evals,
+    ))
 }
