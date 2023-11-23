@@ -23,8 +23,8 @@ pub enum LineSearch {
 #[derive(Debug)]
 pub struct ParamsLBFGS {
     pub lr: f64,
-    pub max_iter: usize,
-    pub max_eval: Option<usize>,
+    // pub max_iter: usize,
+    // pub max_eval: Option<usize>,
     pub history_size: usize,
     pub line_search: Option<LineSearch>,
 }
@@ -33,8 +33,8 @@ impl Default for ParamsLBFGS {
     fn default() -> Self {
         Self {
             lr: 1.,
-            max_iter: 20,
-            max_eval: None,
+            // max_iter: 20,
+            // max_eval: None,
             history_size: 100,
             line_search: None,
         }
