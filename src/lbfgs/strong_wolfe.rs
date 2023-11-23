@@ -5,7 +5,7 @@ use crate::Model;
 
 use super::Lbfgs;
 
-#[allow(dead_code)]
+/// ported from pytorch torch/optim/lbfgs.py ported from https://github.com/torch/optim/blob/master/polyinterp.lua
 fn cubic_interpolate(
     // position 1
     x1: f64,
@@ -44,22 +44,45 @@ fn cubic_interpolate(
 }
 
 impl<M: Model> Lbfgs<M> {
-    fn strong_wolfe<F: FnMut(&Vec<Var>, f64, &Tensor) -> (f64, Tensor)>(
-        &self,
-        mut obj_func: F,
-        // x: Tensor,
-        mut t: f64,
-        d: Tensor,
-        f: f64,
-        g: Tensor,
-        gtd: f64,
-        c1: f64,
-        c2: f64,
-        tolerance_change: f64,
-        max_ls: usize,
+    /// Strong Wolfe line search
+    ///
+    /// # Arguments
+    ///
+    /// step size
+    ///
+    /// direction
+    ///
+    /// initial loss
+    ///
+    /// initial grad
+    ///
+    /// initial directional grad
+    ///
+    /// c1 coefficient for wolfe condition
+    ///
+    /// c2 coefficient for wolfe condition
+    ///
+    /// minimum allowed progress
+    ///
+    /// maximum number of iterations
+    ///
+    /// # Returns
+    ///
+    /// (f_new, g_new, t, ls_func_evals)
+    pub(super) fn strong_wolfe(
+        &mut self,
+        mut t: f64,            // step size
+        d: &Tensor,            // direction
+        f: f64,                // initial loss
+        g: Tensor,             // initial grad
+        gtd: f64,              // initial directional grad
+        c1: f64,               // c1 coefficient for wolfe condition
+        c2: f64,               // c2 coefficient for wolfe condition
+        tolerance_change: f64, // minimum allowed progress
+        max_ls: usize,         // maximum number of iterations
     ) -> CResult<(f64, Tensor, f64, usize)> {
         // ported from https://github.com/torch/optim/blob/master/lswolfe.lua
-        let x = &self.vars;
+        // let x = &self.vars;
         let d_norm = &d
             .abs()?
             .max(0)?
@@ -67,10 +90,10 @@ impl<M: Model> Lbfgs<M> {
             .to_scalar::<f64>()?;
         // let g = g.clone();
         // evaluate objective and gradient using initial step
-        let (mut f_new, g_new) = obj_func(x, t, &d);
+        let (mut f_new, g_new) = self.directional_evaluate(t, d)?; //obj_func(x, t, &d);
         let g_new = Var::from_tensor(&g_new)?;
         let mut ls_func_evals = 1;
-        let mut gtd_new = (g_new.as_tensor() * &d)?
+        let mut gtd_new = (g_new.as_tensor() * d)?
             .sum_all()?
             .to_dtype(candle_core::DType::F64)?
             .to_scalar::<f64>()?;
@@ -147,13 +170,13 @@ impl<M: Model> Lbfgs<M> {
             g_prev.set(g_new.as_tensor())?;
             gtd_prev = gtd_new;
             // assign to temp vars: (f_new, g_new) = obj_func(&x, t, &d);
-            let (next_f, next_g) = obj_func(x, t, &d);
+            let (next_f, next_g) = self.directional_evaluate(t, d)?;
             // overwrite
             f_new = next_f;
             g_new.set(&next_g)?;
             //
             ls_func_evals += 1;
-            gtd_new = (g_new.as_tensor() * &d)?
+            gtd_new = (g_new.as_tensor() * d)?
                 .sum_all()?
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?;
@@ -229,12 +252,12 @@ impl<M: Model> Lbfgs<M> {
 
             // Evaluate new point
             // assign to temp vars: (f_new, g_new) = obj_func(&x, t, &d);
-            let (next_f, next_g) = obj_func(x, t, &d);
+            let (next_f, next_g) = self.directional_evaluate(t, d)?;
             // overwrite
             f_new = next_f;
             g_new.set(&next_g)?;
             ls_func_evals += 1;
-            gtd_new = (g_new.as_tensor() * &d)?
+            gtd_new = (g_new.as_tensor() * d)?
                 .sum_all()?
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?;

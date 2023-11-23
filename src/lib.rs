@@ -47,7 +47,7 @@ pub trait Model: Sized {
 pub trait LossOptimizer<M: Model>: Sized {
     type Config: Sized;
     fn new(vs: Vec<Var>, params: Self::Config, model: M) -> CResult<Self>;
-    fn backward_step(&mut self) -> CResult<()>; //, xs: &Tensor, ys: &Tensor
+    fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome>; //, xs: &Tensor, ys: &Tensor
     fn learning_rate(&self) -> f64;
     fn set_learning_rate(&mut self, lr: f64);
     fn into_inner(self) -> Vec<Var>;
@@ -58,4 +58,14 @@ pub trait LossOptimizer<M: Model>: Sized {
         let vars: Vec<_> = vars.iter().map(|&v| v.clone()).collect();
         Self::new(vars, config, model)
     }
+}
+
+#[derive(Debug)]
+pub enum ModelOutcome {
+    /// The model took a step and the loss decreased
+    /// contains next loss and the number of func evals
+    Stepped(Tensor, usize),
+    /// The model has converged and the loss has not changed
+    /// contains loss and the number of func evals
+    Converged(Tensor, usize),
 }

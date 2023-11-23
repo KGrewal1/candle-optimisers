@@ -1,13 +1,14 @@
 use std::collections::VecDeque;
 
-use crate::{LossOptimizer, Model};
+use crate::{LossOptimizer, Model, ModelOutcome};
 use candle_core::Result as CResult;
 use candle_core::{Tensor, Var};
 // use candle_nn::optim::Optimizer;
 
 mod strong_wolfe;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
+#[non_exhaustive]
 pub enum LineSearch {
     StrongWolfe,
 }
@@ -49,7 +50,6 @@ pub struct Lbfgs<M: Model> {
     last_step: Option<Var>,
     params: ParamsLBFGS,
     first: bool,
-    // avg_acc: HashMap<TensorId, (Tensor, Tensor)>,
 }
 
 impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
@@ -68,13 +68,14 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         })
     }
 
-    fn backward_step(&mut self) -> CResult<()> {
+    fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome> {
         // let vs = self.vars.clone();
-        let loss = self.model.loss()?; //xs, ys , xs: &Tensor, ys: &Tensor
-        println!("loss: {}", loss);
+        println!("loss input: {}", loss);
+        // let loss = self.model.loss()?; //xs, ys , xs: &Tensor, ys: &Tensor
+        // println!("loss: {}", loss);
         // let grads = loss.backward()?;
 
-        // let mut evals = 1;
+        let mut evals = 1;
         let grad = flat_grads(&self.vars, &loss)?;
         // println!("grad: {}", grad);
         // println!(
@@ -92,7 +93,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             < 1e-6
         {
             println!("grad is small enough");
-            return Ok(());
+            return Ok(ModelOutcome::Converged(loss.clone(), evals));
         }
 
         let mut yk = None;
@@ -200,40 +201,11 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
         let dd = (&grad * q.as_tensor())?.sum_all()?;
         println!("dd: {}", dd);
-        if dd.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()? < 0. {
-            println!("WARN: Maximising step");
-            // q.set(&(q.as_tensor() * -1.)?)?; // flip the sign
-
-            // if let Some(ref last) = self.last_grad {
-            //     yk = ((-1. * &grad)? - last.as_tensor())?;
-            //     last.set(&(-1. * &grad)?)?;
-            // } else {
-            //     self.last_grad = Some(Var::from_tensor(&(-1. * &grad)?)?);
-            //     yk = (-1. * grad.copy()?)?
-            // };
-
-            // if let Some(ref last) = self.last_grad {
-            //     yk = (&grad - last.as_tensor())?;
-            //     last.set(&grad)?;
-            // } else {
-            //     self.last_grad = Some(Var::from_tensor(&grad)?);
-            //     yk = grad.copy()?
-            // };
-        }
-        // else {
-        //     if let Some(ref last) = self.last_grad {
-        //         yk = (&grad - last.as_tensor())?;
-        //         last.set(&grad)?;
-        //     } else {
-        //         self.last_grad = Some(Var::from_tensor(&grad)?);
-        //         yk = grad.copy()?
-        //     };
-        // }
 
         // println!("yk: {}", yk);
-        let lr = if self.first {
+        let mut lr = if self.first {
             self.first = false;
-            1_f64.min(
+            -1_f64.min(
                 1. / (&grad)
                     .abs()?
                     .sum_all()?
@@ -241,14 +213,36 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                     .to_scalar::<f64>()?,
             ) * self.params.lr
         } else {
-            self.params.lr
+            -self.params.lr
         };
+
+        if let Some(ls) = &self.params.line_search {
+            match ls {
+                LineSearch::StrongWolfe => {
+                    // println!("loss: {}", loss.squeeze(1)?.squeeze(0)?);
+                    let (loss, _grad, t, steps) = self.strong_wolfe(
+                        lr,
+                        &q,
+                        loss.to_dtype(candle_core::DType::F64)?.to_scalar()?,
+                        grad,
+                        dd.to_dtype(candle_core::DType::F64)?.to_scalar()?,
+                        1e-4,
+                        0.9,
+                        1e-9,
+                        25,
+                    )?;
+                    evals += steps;
+                    println!("after LS, next loss: {}", loss);
+                    lr = t;
+                }
+            }
+        }
         // println!("lr : {lr}");
 
-        let (loss, _grad) = self.directional_evaluate(-lr, q.as_tensor().clone())?;
-        println!("next loss: {}", loss);
+        // let (loss, _grad) = self.directional_evaluate(-lr, q.as_tensor())?;
+        // println!("next loss: {}", loss);
 
-        q.set(&(q.as_tensor() * -lr)?)?;
+        q.set(&(q.as_tensor() * lr)?)?;
 
         // println!("step: {}", q);
 
@@ -264,7 +258,9 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         //     println!("end of iter: {}", v);
         // }
 
-        Ok(())
+        let next_loss = self.model.loss()?;
+        evals += 1;
+        Ok(ModelOutcome::Stepped(next_loss, evals))
     }
 
     fn learning_rate(&self) -> f64 {
@@ -316,7 +312,7 @@ fn set_vs(vs: &mut Vec<Var>, vals: &Vec<Tensor>) -> CResult<()> {
 }
 
 impl<M: Model> Lbfgs<M> {
-    fn directional_evaluate(&mut self, mag: f64, direction: Tensor) -> CResult<(Tensor, Tensor)> {
+    fn directional_evaluate(&mut self, mag: f64, direction: &Tensor) -> CResult<(f64, Tensor)> {
         // need to cache the original result
         // Otherwise leads to drift over line search evals
         let original = self
@@ -325,12 +321,15 @@ impl<M: Model> Lbfgs<M> {
             .map(|v| v.as_tensor().copy())
             .collect::<CResult<Vec<Tensor>>>()?;
 
-        add_grad(&mut self.vars, &(mag * &direction)?)?;
+        add_grad(&mut self.vars, &(mag * direction)?)?;
         let loss = self.model.loss()?;
         let grad = flat_grads(&self.vars, &loss)?;
         set_vs(&mut self.vars, &original)?;
         // add_grad(&mut self.vars, &(-mag * direction)?)?;
-        Ok((loss, grad))
+        Ok((
+            loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?,
+            grad,
+        ))
     }
 }
 

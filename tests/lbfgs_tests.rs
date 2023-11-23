@@ -7,10 +7,11 @@ extern crate accelerate_src;
 // use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 
 use anyhow::Result;
+use candle_core::test_utils::to_vec2_round;
 use candle_core::{DType, Result as CResult};
 use candle_core::{Device, Tensor};
-use candle_nn::{Linear, Module, VarBuilder, VarMap};
-use optimisers::lbfgs::{Lbfgs, ParamsLBFGS};
+// use candle_nn::{Linear, Module, VarBuilder, VarMap};
+use optimisers::lbfgs::{Lbfgs, LineSearch, ParamsLBFGS};
 use optimisers::{LossOptimizer, Model};
 
 /* The results of this test have been checked against the following PyTorch code.
@@ -44,11 +45,11 @@ use optimisers::{LossOptimizer, Model};
 #[test]
 fn lbfgs_test() -> Result<()> {
     // Generate some linear data, y = 3.x1 + x2 - 2.
-    let w_gen = Tensor::new(&[[3f64, 1.]], &Device::Cpu)?;
-    let b_gen = Tensor::new(-2f64, &Device::Cpu)?;
-    let gen = Linear::new(w_gen, Some(b_gen));
-    let sample_xs = Tensor::new(&[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
-    let sample_ys = gen.forward(&sample_xs)?;
+    // let w_gen = Tensor::new(&[[3f64, 1.]], &Device::Cpu)?;
+    // let b_gen = Tensor::new(-2f64, &Device::Cpu)?;
+    // let gen = Linear::new(w_gen, Some(b_gen));
+    // let sample_xs = Tensor::new(&[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?;
+    // let sample_ys = gen.forward(&sample_xs)?;
 
     #[derive(Debug, Clone)]
     pub struct RosenbrockModel {
@@ -59,7 +60,7 @@ fn lbfgs_test() -> Result<()> {
     impl Model for RosenbrockModel {
         fn loss(&self) -> CResult<Tensor> {
             //, xs: &Tensor, ys: &Tensor
-            self.forward()
+            self.forward()?.squeeze(1)?.squeeze(0)
         }
     }
 
@@ -86,26 +87,36 @@ fn lbfgs_test() -> Result<()> {
 
     let params = ParamsLBFGS {
         lr: 1.,
+        line_search: Some(LineSearch::StrongWolfe),
         ..Default::default()
     };
 
     let model = RosenbrockModel::new()?;
 
     let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut loss = model.loss()?;
 
     for step in 0..500 {
         println!("\nstart step {}", step);
         for v in model.vars() {
             println!("{}", v);
         }
-        lbfgs.backward_step()?; //&sample_xs, &sample_ys
-                                // println!("end step {}", _step);
+        let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
+                                               // println!("end step {}", _step);
+        match res {
+            optimisers::ModelOutcome::Converged(_, _) => break,
+            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            // _ => panic!("unexpected outcome"),
+        }
     }
+
     for v in model.vars() {
         println!("{}", v);
+        assert_eq!(to_vec2_round(&v.to_dtype(DType::F32)?, 4)?, &[[1.0000]]);
     }
+
     // println!("{:?}", lbfgs);
     panic!("deliberate panic");
 
-    Ok(())
+    // Ok(())
 }
