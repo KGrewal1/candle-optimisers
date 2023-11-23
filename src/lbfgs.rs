@@ -146,16 +146,32 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         }
 
         let gamma = if let Some((s, y)) = self.s_hist.back() {
-            let numr = (y * s)?
-                .sum_all()?
+            let numr = y
+                .unsqueeze(0)?
+                .matmul(&(s.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?;
-            let denom = &y
-                .sqr()?
-                .sum_all()?
+
+            let denom = y
+                .unsqueeze(0)?
+                .matmul(&(y.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?
-                + 1e-10; // add a little to avoid divide by zero
+                + 1e-10;
+            // let numr = (y * s)?
+            //     .sum_all()?
+            //     .to_dtype(candle_core::DType::F64)?
+            //     .to_scalar::<f64>()?;
+            // let denom = &y
+            //     .sqr()?
+            //     .sum_all()?
+            //     .to_dtype(candle_core::DType::F64)?
+            //     .to_scalar::<f64>()?
+            //     + 1e-10; // add a little to avoid divide by zero
 
             numr / denom
         } else {
@@ -173,18 +189,35 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             //     .reshape(())?
             //     .to_scalar::<f64>()?
             //     .powf(-1.);
-            let rho = ((y * s)?
-                .sum_all()?
+            let rho = (y
+                .unsqueeze(0)?
+                .matmul(&(s.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?
                 + 1e-10)
                 .powi(-1);
+            // let rho = ((y * s)?
+            //     .sum_all()?
+            //     .to_dtype(candle_core::DType::F64)?
+            //     .to_scalar::<f64>()?
+            //     + 1e-10)
+            //     .powi(-1);
 
             let alpha = rho
-                * (s * q.as_tensor())?
-                    .sum_all()?
+                * s.unsqueeze(0)?
+                    .matmul(&(q.unsqueeze(1)?))?
                     .to_dtype(candle_core::DType::F64)?
+                    .squeeze(1)?
+                    .squeeze(0)?
                     .to_scalar::<f64>()?;
+
+            // let alpha = rho
+            //     * (s * q.as_tensor())?
+            //         .sum_all()?
+            //         .to_dtype(candle_core::DType::F64)?
+            //         .to_scalar::<f64>()?;
 
             q.set(&q.sub(&(y * alpha)?)?)?;
             // we are iterating in reverse and so want to insert at the front of the VecDeque
@@ -201,14 +234,28 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             .zip(rhos.into_iter())
         {
             let beta = rho
-                * (y * q.as_tensor())?
-                    .sum_all()?
+                * y.unsqueeze(0)?
+                    .matmul(&(q.unsqueeze(1)?))?
                     .to_dtype(candle_core::DType::F64)?
+                    .squeeze(1)?
+                    .squeeze(0)?
                     .to_scalar::<f64>()?;
+            // let beta = rho
+            //     * (y * q.as_tensor())?
+            //         .sum_all()?
+            //         .to_dtype(candle_core::DType::F64)?
+            //         .to_scalar::<f64>()?;
             q.set(&q.add(&(s * (alpha - beta))?)?)?;
         }
 
-        let dd = (&grad * q.as_tensor())?.sum_all()?;
+        // let dd = (&grad * q.as_tensor())?.sum_all()?;
+        let dd = grad
+            .unsqueeze(0)?
+            .matmul(&(q.unsqueeze(1)?))?
+            .to_dtype(candle_core::DType::F64)?
+            .squeeze(1)?
+            .squeeze(0)?
+            .to_scalar::<f64>()?;
 
         let mut lr = if self.first {
             self.first = false;
@@ -231,7 +278,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                         &q,
                         loss.to_dtype(candle_core::DType::F64)?.to_scalar()?,
                         &grad,
-                        dd.to_dtype(candle_core::DType::F64)?.to_scalar()?,
+                        dd,
                         *c1,
                         *c2,
                         *tol,
