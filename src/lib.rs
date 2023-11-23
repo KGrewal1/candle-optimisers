@@ -51,9 +51,6 @@ pub trait LossOptimizer<M: Model>: Sized {
     fn learning_rate(&self) -> f64;
     fn set_learning_rate(&mut self, lr: f64);
     fn into_inner(self) -> Vec<Var>;
-    fn empty(config: Self::Config, model: M) -> CResult<Self> {
-        Self::new(vec![], config, model)
-    }
     fn from_slice(vars: &[&Var], config: Self::Config, model: M) -> CResult<Self> {
         let vars: Vec<_> = vars.iter().map(|&v| v.clone()).collect();
         Self::new(vars, config, model)

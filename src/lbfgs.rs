@@ -295,9 +295,44 @@ mod tests {
     use crate::Model;
     use anyhow::Result;
     use assert_approx_eq::assert_approx_eq;
-    use candle_core::{DType, Device};
+    use candle_core::Device;
     use candle_core::{Module, Result as CResult};
-    use candle_nn::{VarBuilder, VarMap};
+    pub struct LinearModel {
+        linear: candle_nn::Linear,
+        xs: Tensor,
+        ys: Tensor,
+    }
+
+    impl Model for LinearModel {
+        fn loss(&self) -> CResult<Tensor> {
+            let preds = self.forward(&self.xs)?;
+            let loss = candle_nn::loss::mse(&preds, &self.ys)?;
+            Ok(loss)
+        }
+    }
+
+    impl LinearModel {
+        fn new() -> CResult<(Self, Vec<Var>)> {
+            let weight = Var::from_tensor(&Tensor::new(&[3f64, 1.], &Device::Cpu)?)?;
+            let bias = Var::from_tensor(&Tensor::new(-2f64, &Device::Cpu)?)?;
+
+            let linear =
+                candle_nn::Linear::new(weight.as_tensor().clone(), Some(bias.as_tensor().clone()));
+
+            Ok((
+                Self {
+                    linear,
+                    xs: Tensor::new(&[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?,
+                    ys: Tensor::new(&[[7f64], [26.], [0.], [27.]], &Device::Cpu)?,
+                },
+                vec![weight, bias],
+            ))
+        }
+
+        fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
+            self.linear.forward(xs)
+        }
+    }
 
     use super::*;
     #[test]
@@ -306,42 +341,8 @@ mod tests {
             lr: 0.004,
             ..Default::default()
         };
-        // Now use backprop to run a linear regression between samples and get the coefficients back.
-        pub struct LinearModel {
-            linear: candle_nn::Linear,
-            xs: Tensor,
-            ys: Tensor,
-        }
-
-        impl Model for LinearModel {
-            fn loss(&self) -> CResult<Tensor> {
-                let preds = self.forward(&self.xs)?;
-                let loss = candle_nn::loss::mse(&preds, &self.ys)?;
-                Ok(loss)
-            }
-        }
-
-        impl LinearModel {
-            fn new(vs: VarBuilder) -> CResult<Self> {
-                let linear = candle_nn::linear(2, 1, vs.pp("ln1"))?;
-                Ok(Self {
-                    linear,
-                    xs: Tensor::new(&[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]], &Device::Cpu)?,
-                    ys: Tensor::new(&[[7f64], [26.], [0.], [27.]], &Device::Cpu)?,
-                })
-            }
-
-            fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
-                self.linear.forward(xs)
-            }
-        }
-
-        // create a new variable store
-        let varmap = VarMap::new();
-        // create a new variable builder
-        let vs = VarBuilder::from_varmap(&varmap, DType::F32, &Device::Cpu);
-        let model = LinearModel::new(vs)?;
-        let mut lbfgs = Lbfgs::new(varmap.all_vars(), params, model)?;
+        let (model, vars) = LinearModel::new()?;
+        let mut lbfgs = Lbfgs::new(vars, params, model)?;
         assert_approx_eq!(0.004, lbfgs.learning_rate());
         lbfgs.set_learning_rate(0.002);
         assert_approx_eq!(0.002, lbfgs.learning_rate());
@@ -355,47 +356,6 @@ mod tests {
             ..Default::default()
         };
         // Now use backprop to run a linear regression between samples and get the coefficients back.
-        pub struct LinearModel {
-            linear: candle_nn::Linear,
-            xs: Tensor,
-            ys: Tensor,
-        }
-
-        impl Model for LinearModel {
-            fn loss(&self) -> CResult<Tensor> {
-                let preds = self.forward(&self.xs)?;
-                let loss = candle_nn::loss::mse(&preds, &self.ys)?;
-                Ok(loss)
-            }
-        }
-
-        impl LinearModel {
-            fn new() -> CResult<(Self, Vec<Var>)> {
-                let weight = Var::from_tensor(&Tensor::new(&[3f64, 1.], &Device::Cpu)?)?;
-                let bias = Var::from_tensor(&Tensor::new(-2f64, &Device::Cpu)?)?;
-
-                let linear = candle_nn::Linear::new(
-                    weight.as_tensor().clone(),
-                    Some(bias.as_tensor().clone()),
-                );
-
-                Ok((
-                    Self {
-                        linear,
-                        xs: Tensor::new(
-                            &[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]],
-                            &Device::Cpu,
-                        )?,
-                        ys: Tensor::new(&[[7f64], [26.], [0.], [27.]], &Device::Cpu)?,
-                    },
-                    vec![weight, bias],
-                ))
-            }
-
-            fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
-                self.linear.forward(xs)
-            }
-        }
 
         let (model, vars) = LinearModel::new()?;
         let lbfgs = Lbfgs::new(vars, params, model)?;
