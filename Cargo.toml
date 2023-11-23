@@ -1,11 +1,11 @@
 [package]
 name = "optimisers"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
 keywords = ["optimisers", "candle", "tensor", "machine-learning"]
-categories = ["science"]
+categories = ["science", "machine-learning", "optimisation"]
 description = "Optimisers for use with candle, the minimalist ML framework"
 repository = "https://github.com/KGrewal1/optimisers"
 
