@@ -8,10 +8,8 @@ extern crate accelerate_src;
 
 use anyhow::Result;
 use candle_core::test_utils::to_vec2_round;
-use candle_core::{DType, Result as CResult};
-use candle_core::{Device, Tensor};
-// use candle_nn::{Linear, Module, VarBuilder, VarMap};
-use optimisers::lbfgs::{Lbfgs, LineSearch, ParamsLBFGS};
+use candle_core::{DType, Device, Result as CResult, Tensor};
+use optimisers::lbfgs::{GradConv, Lbfgs, LineSearch, ParamsLBFGS, StepConv};
 use optimisers::{LossOptimizer, Model};
 
 /*
@@ -94,6 +92,83 @@ fn lbfgs_test_strong_wolfe() -> Result<()> {
     let params = ParamsLBFGS {
         lr: 1.,
         line_search: Some(LineSearch::StrongWolfe(1e-4, 0.9, 1e-9)),
+        ..Default::default()
+    };
+
+    let model = RosenbrockModel::new()?;
+
+    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut loss = model.loss()?;
+
+    for _step in 0..500 {
+        // println!("\nstart step {}", step);
+        // for v in model.vars() {
+        //     println!("{}", v);
+        // }
+        let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
+                                               // println!("end step {}", _step);
+        match res {
+            optimisers::ModelOutcome::Converged(_, _) => break,
+            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            // _ => panic!("unexpected outcome"),
+        }
+    }
+
+    for v in model.vars() {
+        // println!("{}", v);
+        assert_eq!(to_vec2_round(&v.to_dtype(DType::F32)?, 4)?, &[[1.0000]]);
+    }
+
+    // println!("{:?}", lbfgs);
+    // panic!("deliberate panic");
+
+    Ok(())
+}
+
+#[test]
+fn lbfgs_rms_grad_test() -> Result<()> {
+    let params = ParamsLBFGS {
+        lr: 1.,
+        grad_conv: GradConv::RMSForce(1e-6),
+        ..Default::default()
+    };
+
+    let model = RosenbrockModel::new()?;
+
+    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut loss = model.loss()?;
+
+    for _step in 0..500 {
+        // println!("\nstart step {}", step);
+        // for v in model.vars() {
+        //     println!("{}", v);
+        // }
+        let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
+                                               // println!("end step {}", _step);
+        match res {
+            optimisers::ModelOutcome::Converged(_, _) => break,
+            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            // _ => panic!("unexpected outcome"),
+        }
+    }
+
+    for v in model.vars() {
+        // println!("{}", v);
+        assert_eq!(to_vec2_round(&v.to_dtype(DType::F32)?, 4)?, &[[1.0000]]);
+    }
+
+    // println!("{:?}", lbfgs);
+    // panic!("deliberate panic");
+
+    Ok(())
+}
+
+#[test]
+fn lbfgs_rms_step_test() -> Result<()> {
+    let params = ParamsLBFGS {
+        lr: 1.,
+        grad_conv: GradConv::RMSForce(0.),
+        step_conv: StepConv::RMSStep(1e-7),
         ..Default::default()
     };
 

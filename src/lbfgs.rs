@@ -436,7 +436,8 @@ mod tests {
         // Now use backprop to run a linear regression between samples and get the coefficients back.
 
         let (model, vars) = LinearModel::new()?;
-        let lbfgs = Lbfgs::new(vars, params, model)?;
+        let slice: Vec<&Var> = vars.iter().collect();
+        let lbfgs = Lbfgs::from_slice(&slice, params, model)?;
         let inner = lbfgs.into_inner();
 
         assert_eq!(inner[0].as_tensor().to_vec1::<f64>()?, &[3f64, 1.]);
