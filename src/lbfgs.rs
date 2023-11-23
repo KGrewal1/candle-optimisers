@@ -69,6 +69,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     }
 
     fn backward_step(&mut self) -> CResult<()> {
+        // let vs = self.vars.clone();
         let loss = self.model.loss()?; //xs, ys , xs: &Tensor, ys: &Tensor
         println!("loss: {}", loss);
         // let grads = loss.backward()?;
@@ -307,20 +308,28 @@ fn add_grad(vs: &mut Vec<Var>, flat_tensor: &Tensor) -> CResult<()> {
     Ok(())
 }
 
-// fn set_vs(vs: &mut Vec<Var>, vals: &Vec<Tensor>) -> CResult<()> {
-//     for (var, t) in vs.iter().zip(vals) {
-//         var.set(&t)?;
-//     }
-//     Ok(())
-// }
+fn set_vs(vs: &mut Vec<Var>, vals: &Vec<Tensor>) -> CResult<()> {
+    for (var, t) in vs.iter().zip(vals) {
+        var.set(&t)?;
+    }
+    Ok(())
+}
 
 impl<M: Model> Lbfgs<M> {
     fn directional_evaluate(&mut self, mag: f64, direction: Tensor) -> CResult<(Tensor, Tensor)> {
-        // let original = self.vars.iter().map(|v| v.as_tensor()).collect();
+        // need to cache the original result
+        // Otherwise leads to drift over line search evals
+        let original = self
+            .vars
+            .iter()
+            .map(|v| v.as_tensor().copy())
+            .collect::<CResult<Vec<Tensor>>>()?;
+
         add_grad(&mut self.vars, &(mag * &direction)?)?;
         let loss = self.model.loss()?;
         let grad = flat_grads(&self.vars, &loss)?;
-        add_grad(&mut self.vars, &(-mag * direction)?)?;
+        set_vs(&mut self.vars, &original)?;
+        // add_grad(&mut self.vars, &(-mag * direction)?)?;
         Ok((loss, grad))
     }
 }
