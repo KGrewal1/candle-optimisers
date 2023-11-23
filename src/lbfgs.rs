@@ -69,22 +69,9 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     }
 
     fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome> {
-        // let vs = self.vars.clone();
-        println!("loss input: {}", loss);
-        // let loss = self.model.loss()?; //xs, ys , xs: &Tensor, ys: &Tensor
-        // println!("loss: {}", loss);
-        // let grads = loss.backward()?;
-
         let mut evals = 1;
         let grad = flat_grads(&self.vars, &loss)?;
-        // println!("grad: {}", grad);
-        // println!(
-        //     "max F: {}",
-        //     grad.abs()?
-        //         .max(0)?
-        //         .to_dtype(candle_core::DType::F64)?
-        //         .to_scalar::<f64>()?
-        // );
+
         if grad
             .abs()?
             .max(0)?
@@ -92,7 +79,6 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             .to_scalar::<f64>()?
             < 1e-6
         {
-            println!("grad is small enough");
             return Ok(ModelOutcome::Converged(loss.clone(), evals));
         }
 
@@ -104,8 +90,6 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         } else {
             self.last_grad = Some(Var::from_tensor(&grad)?);
         }
-
-        // println!("grad: {}", grad);
 
         let q = Var::from_tensor(&grad)?;
 
@@ -119,11 +103,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 self.s_hist.push_back((step.as_tensor().clone(), yk));
             }
         }
-        // self.s_hist.push_back((q.into_inner(), yk));
 
         let gamma = if let Some((s, y)) = self.s_hist.back() {
-            // println!("y: {}", y);
-            // println!("s: {}", s);
             let numr = (y * s)?
                 .sum_all()?
                 .to_dtype(candle_core::DType::F64)?
@@ -134,18 +115,16 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?
                 + 1e-10; // add a little to avoid divide by zero
-                         // println!("numr: {}", numr);
-                         // println!("denom: {}", denom);
+
             numr / denom
         } else {
-            1. // self.learning_rate()
+            1.
         };
-        // println!("gamma: {}", gamma);
 
         let mut rhos = VecDeque::with_capacity(hist_size);
         let mut alphas = VecDeque::with_capacity(hist_size);
         for (s, y) in self.s_hist.iter().rev() {
-            // alt dot product? println!("test: {}", test);
+            // alt dot product? println!("test: {}", test); : TODO switch dot product method
             // let test = y
             //     .reshape((1, ()))?
             //     .matmul(&s.reshape(((), 1))?)?
@@ -159,7 +138,6 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .to_scalar::<f64>()?
                 + 1e-10)
                 .powi(-1);
-            // println!("rho: {}", rho);
 
             let alpha = &rho
                 * (s * q.as_tensor())?
@@ -168,41 +146,30 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                     .to_scalar::<f64>()?;
 
             q.set(&q.sub(&(y * alpha)?)?)?;
-            // println!("alpha: {}", alpha);
-            // println!("rho: {}", rho);
             // we are iterating in reverse and so want to insert at the front of the VecDeque
             alphas.push_front(alpha);
             rhos.push_front(rho);
         }
-        // println!("q after loop 1: {}", q);
 
         // z = q * gamma so use interior mutability of q to set it
         q.set(&(q.as_tensor() * gamma)?)?;
-        // println!("q before loop 2: {}", q);
         for (((s, y), alpha), rho) in self
             .s_hist
             .iter()
             .zip(alphas.into_iter())
             .zip(rhos.into_iter())
         {
-            // println!("alpha: {}", alpha);
-            // println!("rho: {}", rho);
             let beta = rho
                 * (y * q.as_tensor())?
                     .sum_all()?
                     .to_dtype(candle_core::DType::F64)?
                     .to_scalar::<f64>()?;
-            // println!("beta: {}", beta);
             q.set(&q.add(&(s * (alpha - beta))?)?)?;
-            // println!("q: {}", q);
         }
-
-        // println!("q after loop 2: {}", q);
 
         let dd = (&grad * q.as_tensor())?.sum_all()?;
         println!("dd: {}", dd);
 
-        // println!("yk: {}", yk);
         let mut lr = if self.first {
             self.first = false;
             -1_f64.min(
@@ -219,8 +186,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         if let Some(ls) = &self.params.line_search {
             match ls {
                 LineSearch::StrongWolfe => {
-                    // println!("loss: {}", loss.squeeze(1)?.squeeze(0)?);
-                    let (loss, _grad, t, steps) = self.strong_wolfe(
+                    let (_loss, _grad, t, steps) = self.strong_wolfe(
                         lr,
                         &q,
                         loss.to_dtype(candle_core::DType::F64)?.to_scalar()?,
@@ -232,19 +198,12 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                         25,
                     )?;
                     evals += steps;
-                    println!("after LS, next loss: {}", loss);
                     lr = t;
                 }
             }
         }
-        // println!("lr : {lr}");
-
-        // let (loss, _grad) = self.directional_evaluate(-lr, q.as_tensor())?;
-        // println!("next loss: {}", loss);
 
         q.set(&(q.as_tensor() * lr)?)?;
-
-        // println!("step: {}", q);
 
         if let Some(step) = &self.last_step {
             step.set(&q)?;
@@ -253,10 +212,6 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         }
 
         add_grad(&mut self.vars, &q.as_tensor())?;
-
-        // for v in &self.vars {
-        //     println!("end of iter: {}", v);
-        // }
 
         let next_loss = self.model.loss()?;
         evals += 1;
@@ -390,6 +345,65 @@ mod tests {
         assert_approx_eq!(0.004, lbfgs.learning_rate());
         lbfgs.set_learning_rate(0.002);
         assert_approx_eq!(0.002, lbfgs.learning_rate());
+        Ok(())
+    }
+
+    #[test]
+    fn into_inner_test() -> Result<()> {
+        let params = ParamsLBFGS {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        pub struct LinearModel {
+            linear: candle_nn::Linear,
+            xs: Tensor,
+            ys: Tensor,
+        }
+
+        impl Model for LinearModel {
+            fn loss(&self) -> CResult<Tensor> {
+                let preds = self.forward(&self.xs)?;
+                let loss = candle_nn::loss::mse(&preds, &self.ys)?;
+                Ok(loss)
+            }
+        }
+
+        impl LinearModel {
+            fn new() -> CResult<(Self, Vec<Var>)> {
+                let weight = Var::from_tensor(&Tensor::new(&[3f64, 1.], &Device::Cpu)?)?;
+                let bias = Var::from_tensor(&Tensor::new(-2f64, &Device::Cpu)?)?;
+
+                let linear = candle_nn::Linear::new(
+                    weight.as_tensor().clone(),
+                    Some(bias.as_tensor().clone()),
+                );
+
+                Ok((
+                    Self {
+                        linear,
+                        xs: Tensor::new(
+                            &[[2f64, 1.], [7., 4.], [-4., 12.], [5., 8.]],
+                            &Device::Cpu,
+                        )?,
+                        ys: Tensor::new(&[[7f64], [26.], [0.], [27.]], &Device::Cpu)?,
+                    },
+                    vec![weight, bias],
+                ))
+            }
+
+            fn forward(&self, xs: &Tensor) -> CResult<Tensor> {
+                self.linear.forward(xs)
+            }
+        }
+
+        let (model, vars) = LinearModel::new()?;
+        let lbfgs = Lbfgs::new(vars, params, model)?;
+        let inner = lbfgs.into_inner();
+
+        assert_eq!(inner[0].as_tensor().to_vec1::<f64>()?, &[3f64, 1.]);
+        println!("checked weights");
+        assert_approx_eq!(inner[1].as_tensor().to_vec0::<f64>()?, -2_f64);
         Ok(())
     }
 }
