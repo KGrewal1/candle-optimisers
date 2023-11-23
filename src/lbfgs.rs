@@ -7,10 +7,30 @@ use candle_core::{Tensor, Var};
 
 mod strong_wolfe;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum LineSearch {
-    StrongWolfe,
+    /// strong wolfe line search: c1, c2, tolerance
+    /// suggested vals for c1 and c2: 1e-4, 0.9
+    StrongWolfe(f64, f64, f64),
+}
+
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub enum GradConv {
+    /// convergence based on max abs component of gradient
+    MinForce(f64),
+    /// convergence based on mean force
+    RMSForce(f64),
+}
+
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub enum StepConv {
+    /// convergence based on max abs component of step
+    MinStep(f64),
+    /// convergence based on root mean size of step
+    RMSStep(f64),
 }
 
 /// LBFGS optimiser: see Nocedal
@@ -20,13 +40,15 @@ pub enum LineSearch {
 /// <https://sagecal.sourceforge.net/pytorch/index.html>
 /// <https://github.com/hjmshi/PyTorch-LBFGS/blob/master/functions/LBFGS.py>
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ParamsLBFGS {
     pub lr: f64,
     // pub max_iter: usize,
     // pub max_eval: Option<usize>,
     pub history_size: usize,
     pub line_search: Option<LineSearch>,
+    pub grad_conv: GradConv,
+    pub step_conv: StepConv,
 }
 
 impl Default for ParamsLBFGS {
@@ -37,6 +59,8 @@ impl Default for ParamsLBFGS {
             // max_eval: None,
             history_size: 100,
             line_search: None,
+            grad_conv: GradConv::MinForce(1e-7),
+            step_conv: StepConv::MinStep(1e-9),
         }
     }
 }
@@ -73,14 +97,30 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         let mut evals = 1;
         let grad = flat_grads(&self.vars, loss)?;
 
-        if grad
-            .abs()?
-            .max(0)?
-            .to_dtype(candle_core::DType::F64)?
-            .to_scalar::<f64>()?
-            < 1e-6
-        {
-            return Ok(ModelOutcome::Converged(loss.clone(), evals));
+        match self.params.grad_conv {
+            GradConv::MinForce(tol) => {
+                if grad
+                    .abs()?
+                    .max(0)?
+                    .to_dtype(candle_core::DType::F64)?
+                    .to_scalar::<f64>()?
+                    < tol
+                {
+                    return Ok(ModelOutcome::Converged(loss.clone(), evals));
+                }
+            }
+            GradConv::RMSForce(tol) => {
+                if grad
+                    .sqr()?
+                    .mean_all()?
+                    .to_dtype(candle_core::DType::F64)?
+                    .to_scalar::<f64>()?
+                    .sqrt()
+                    < tol
+                {
+                    return Ok(ModelOutcome::Converged(loss.clone(), evals));
+                }
+            }
         }
 
         let mut yk = None;
@@ -185,16 +225,16 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
         if let Some(ls) = &self.params.line_search {
             match ls {
-                LineSearch::StrongWolfe => {
+                LineSearch::StrongWolfe(c1, c2, tol) => {
                     let (_loss, _grad, t, steps) = self.strong_wolfe(
                         lr,
                         &q,
                         loss.to_dtype(candle_core::DType::F64)?.to_scalar()?,
                         &grad,
                         dd.to_dtype(candle_core::DType::F64)?.to_scalar()?,
-                        1e-4,
-                        0.9,
-                        1e-9,
+                        *c1,
+                        *c2,
+                        *tol,
                         25,
                     )?;
                     evals += steps;
@@ -211,11 +251,49 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             self.last_step = Some(Var::from_tensor(&q)?);
         }
 
-        add_grad(&mut self.vars, q.as_tensor())?;
+        match self.params.step_conv {
+            StepConv::MinStep(tol) => {
+                if q.abs()?
+                    .max(0)?
+                    .to_dtype(candle_core::DType::F64)?
+                    .to_scalar::<f64>()?
+                    < tol
+                {
+                    add_grad(&mut self.vars, q.as_tensor())?;
 
-        let next_loss = self.model.loss()?;
-        evals += 1;
-        Ok(ModelOutcome::Stepped(next_loss, evals))
+                    let next_loss = self.model.loss()?;
+                    evals += 1;
+                    Ok(ModelOutcome::Converged(next_loss, evals))
+                } else {
+                    add_grad(&mut self.vars, q.as_tensor())?;
+
+                    let next_loss = self.model.loss()?;
+                    evals += 1;
+                    Ok(ModelOutcome::Stepped(next_loss, evals))
+                }
+            }
+            StepConv::RMSStep(tol) => {
+                if q.sqr()?
+                    .mean_all()?
+                    .to_dtype(candle_core::DType::F64)?
+                    .to_scalar::<f64>()?
+                    .sqrt()
+                    < tol
+                {
+                    add_grad(&mut self.vars, q.as_tensor())?;
+
+                    let next_loss = self.model.loss()?;
+                    evals += 1;
+                    Ok(ModelOutcome::Converged(next_loss, evals))
+                } else {
+                    add_grad(&mut self.vars, q.as_tensor())?;
+
+                    let next_loss = self.model.loss()?;
+                    evals += 1;
+                    Ok(ModelOutcome::Stepped(next_loss, evals))
+                }
+            }
+        }
     }
 
     fn learning_rate(&self) -> f64 {
