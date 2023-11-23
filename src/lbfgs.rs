@@ -68,6 +68,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome> {
         let mut evals = 1;
         let grad = flat_grads(&self.vars, loss)?;

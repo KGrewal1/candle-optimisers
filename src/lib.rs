@@ -1,18 +1,3 @@
-#![warn(
-    clippy::pedantic,
-    clippy::suspicious,
-    clippy::perf,
-    clippy::complexity,
-    clippy::style,
-    clippy::cargo,
-    clippy::imprecise_flops
-)]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::too_many_lines,
-    clippy::uninlined_format_args
-)]
-
 //! Optimisers for use with the candle framework for lightweight machine learning.
 //! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
 

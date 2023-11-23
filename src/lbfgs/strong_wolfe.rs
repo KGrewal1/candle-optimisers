@@ -69,7 +69,7 @@ impl<M: Model> Lbfgs<M> {
     /// # Returns
     ///
     /// (`f_new`, `g_new`, t, `ls_func_evals`)
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
     pub(super) fn strong_wolfe(
         &mut self,
         mut step_size: f64,    // step size

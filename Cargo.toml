@@ -28,3 +28,14 @@ clap = {version = "4.4.6", features = ["derive"] }
 default = []
 cuda = ["candle-core/cuda", "candle-nn/cuda"]
 mkl = ["dep:intel-mkl-src", "candle-core/mkl"]
+
+[lints.clippy]
+pedantic = "warn"
+suspicious = "warn"
+perf = "warn"
+complexity = "warn"
+style = "warn"
+cargo = "warn"
+imprecise_flops = "warn"
+missing_errors_doc = {level =  "allow", priority = 1}
+uninlined_format_args = {level =  "allow", priority = 1}
