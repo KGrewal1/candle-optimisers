@@ -169,7 +169,6 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         }
 
         let dd = (&grad * q.as_tensor())?.sum_all()?;
-        println!("dd: {}", dd);
 
         let mut lr = if self.first {
             self.first = false;
