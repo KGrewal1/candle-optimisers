@@ -4,7 +4,7 @@ use candle_nn::{Linear, Module, VarBuilder};
 const IMAGE_DIM: usize = 784;
 const LABELS: usize = 10;
 
-fn linear_z(in_dim: usize, out_dim: usize, vs: VarBuilder) -> Result<Linear> {
+fn linear_z(in_dim: usize, out_dim: usize, vs: &VarBuilder) -> Result<Linear> {
     let ws = vs.get_with_hints((out_dim, in_dim), "weight", candle_nn::init::ZERO)?;
     let bs = vs.get_with_hints(out_dim, "bias", candle_nn::init::ZERO)?;
     Ok(Linear::new(ws, Some(bs)))
@@ -21,7 +21,7 @@ pub struct LinearModel {
 
 impl Model for LinearModel {
     fn new(vs: VarBuilder) -> Result<Self> {
-        let linear = linear_z(IMAGE_DIM, LABELS, vs)?;
+        let linear = linear_z(IMAGE_DIM, LABELS, &vs)?;
         Ok(Self { linear })
     }
 

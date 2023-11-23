@@ -2,6 +2,7 @@ use crate::{models::Model, optim::Optim, parse_cli::TrainingArgs};
 use candle_core::{DType, D};
 use candle_nn::{loss, ops, VarBuilder, VarMap};
 
+#[allow(clippy::module_name_repetitions)]
 pub fn training_loop<M: Model, O: Optim>(
     m: candle_datasets::vision::Dataset,
     args: &TrainingArgs,
@@ -27,7 +28,7 @@ pub fn training_loop<M: Model, O: Optim>(
     // see if there are pretrained weights to load
     if let Some(load) = &args.load {
         println!("loading weights from {load}");
-        varmap.load(load)?
+        varmap.load(load)?;
     }
 
     // create an optimiser
@@ -58,6 +59,7 @@ pub fn training_loop<M: Model, O: Optim>(
             .sum_all()?
             .to_scalar::<f32>()?;
         // get the accuracy on the test set
+        #[allow(clippy::cast_precision_loss)]
         let test_accuracy = sum_ok / test_labels.dims1()? as f32;
         println!(
             "{:4} train loss: {:8.5} test acc: {:5.2}%",
@@ -68,7 +70,7 @@ pub fn training_loop<M: Model, O: Optim>(
     }
     if let Some(save) = &args.save {
         println!("saving trained weights in {save}");
-        varmap.save(save)?
+        varmap.save(save)?;
     }
     Ok(())
 }
