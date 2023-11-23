@@ -17,8 +17,8 @@ pub enum LineSearch {
 ///
 /// Described in <https://link.springer.com/article/10.1007/BF01589116>]
 ///
-/// https://sagecal.sourceforge.net/pytorch/index.html
-/// https://github.com/hjmshi/PyTorch-LBFGS/blob/master/functions/LBFGS.py
+/// <https://sagecal.sourceforge.net/pytorch/index.html>
+/// <https://github.com/hjmshi/PyTorch-LBFGS/blob/master/functions/LBFGS.py>
 
 #[derive(Debug)]
 pub struct ParamsLBFGS {
@@ -70,7 +70,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
     fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome> {
         let mut evals = 1;
-        let grad = flat_grads(&self.vars, &loss)?;
+        let grad = flat_grads(&self.vars, loss)?;
 
         if grad
             .abs()?
@@ -139,7 +139,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 + 1e-10)
                 .powi(-1);
 
-            let alpha = &rho
+            let alpha = rho
                 * (s * q.as_tensor())?
                     .sum_all()?
                     .to_dtype(candle_core::DType::F64)?
@@ -172,13 +172,13 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
         let mut lr = if self.first {
             self.first = false;
-            -1_f64.min(
-                1. / (&grad)
+            -(1_f64.min(
+                1. / grad
                     .abs()?
                     .sum_all()?
                     .to_dtype(candle_core::DType::F64)?
                     .to_scalar::<f64>()?,
-            ) * self.params.lr
+            )) * self.params.lr
         } else {
             -self.params.lr
         };
@@ -190,7 +190,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                         lr,
                         &q,
                         loss.to_dtype(candle_core::DType::F64)?.to_scalar()?,
-                        grad,
+                        &grad,
                         dd.to_dtype(candle_core::DType::F64)?.to_scalar()?,
                         1e-4,
                         0.9,
@@ -211,7 +211,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             self.last_step = Some(Var::from_tensor(&q)?);
         }
 
-        add_grad(&mut self.vars, &q.as_tensor())?;
+        add_grad(&mut self.vars, q.as_tensor())?;
 
         let next_loss = self.model.loss()?;
         evals += 1;
@@ -236,7 +236,7 @@ fn flat_grads(vs: &Vec<Var>, loss: &Tensor) -> CResult<Tensor> {
     let grads = loss.backward()?;
     let mut flat_grads = Vec::with_capacity(vs.len());
     for v in vs {
-        if let Some(grad) = grads.get(&v) {
+        if let Some(grad) = grads.get(v) {
             flat_grads.push(grad.flatten_all()?);
         } else {
             let n_elems = v.elem_count();
@@ -259,9 +259,9 @@ fn add_grad(vs: &mut Vec<Var>, flat_tensor: &Tensor) -> CResult<()> {
     Ok(())
 }
 
-fn set_vs(vs: &mut Vec<Var>, vals: &Vec<Tensor>) -> CResult<()> {
+fn set_vs(vs: &mut [Var], vals: &Vec<Tensor>) -> CResult<()> {
     for (var, t) in vs.iter().zip(vals) {
-        var.set(&t)?;
+        var.set(t)?;
     }
     Ok(())
 }
