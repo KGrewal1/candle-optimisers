@@ -89,14 +89,17 @@ impl<M: Model> Lbfgs<M> {
             .max(0)?
             .to_dtype(candle_core::DType::F64)?
             .to_scalar::<f64>()?;
+
         // let g = g.clone();
         // evaluate objective and gradient using initial step
         let (mut f_new, g_new) = self.directional_evaluate(step_size, direction)?; //obj_func(x, t, &d);
         let g_new = Var::from_tensor(&g_new)?;
         let mut ls_func_evals = 1;
-        let mut gtd_new = (g_new.as_tensor() * direction)?
-            .sum_all()?
+        let mut gtd_new = g_new
+            .unsqueeze(0)?
+            .matmul(&(direction.unsqueeze(1)?))?
             .to_dtype(candle_core::DType::F64)?
+            .sum_all()?
             .to_scalar::<f64>()?;
 
         // bracket an interval containing a point satisfying the Wolfe criteria
@@ -179,9 +182,15 @@ impl<M: Model> Lbfgs<M> {
             g_new.set(&next_g)?;
             //
             ls_func_evals += 1;
-            gtd_new = (g_new.as_tensor() * direction)?
-                .sum_all()?
+            // gtd_new = (g_new.as_tensor() * direction)?
+            //     .sum_all()?
+            //     .to_dtype(candle_core::DType::F64)?
+            //     .to_scalar::<f64>()?;
+            gtd_new = g_new
+                .unsqueeze(0)?
+                .matmul(&(direction.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .sum_all()?
                 .to_scalar::<f64>()?;
             ls_iter += 1;
 
@@ -263,9 +272,15 @@ impl<M: Model> Lbfgs<M> {
             f_new = next_f;
             g_new.set(&next_g)?;
             ls_func_evals += 1;
-            gtd_new = (g_new.as_tensor() * direction)?
-                .sum_all()?
+            // gtd_new = (g_new.as_tensor() * direction)?
+            //     .sum_all()?
+            //     .to_dtype(candle_core::DType::F64)?
+            //     .to_scalar::<f64>()?;
+            gtd_new = g_new
+                .unsqueeze(0)?
+                .matmul(&(direction.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .sum_all()?
                 .to_scalar::<f64>()?;
             ls_iter += 1;
 

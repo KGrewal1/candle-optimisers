@@ -150,28 +150,16 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .unsqueeze(0)?
                 .matmul(&(s.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
-                .squeeze(1)?
-                .squeeze(0)?
+                .sum_all()?
                 .to_scalar::<f64>()?;
 
             let denom = y
                 .unsqueeze(0)?
                 .matmul(&(y.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
-                .squeeze(1)?
-                .squeeze(0)?
+                .sum_all()?
                 .to_scalar::<f64>()?
                 + 1e-10;
-            // let numr = (y * s)?
-            //     .sum_all()?
-            //     .to_dtype(candle_core::DType::F64)?
-            //     .to_scalar::<f64>()?;
-            // let denom = &y
-            //     .sqr()?
-            //     .sum_all()?
-            //     .to_dtype(candle_core::DType::F64)?
-            //     .to_scalar::<f64>()?
-            //     + 1e-10; // add a little to avoid divide by zero
 
             numr / denom
         } else {
@@ -181,43 +169,21 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         let mut rhos = VecDeque::with_capacity(hist_size);
         let mut alphas = VecDeque::with_capacity(hist_size);
         for (s, y) in self.s_hist.iter().rev() {
-            // alt dot product? println!("test: {}", test); : TODO switch dot product method
-            // let test = y
-            //     .reshape((1, ()))?
-            //     .matmul(&s.reshape(((), 1))?)?
-            //     .to_dtype(candle_core::DType::F64)?
-            //     .reshape(())?
-            //     .to_scalar::<f64>()?
-            //     .powf(-1.);
             let rho = (y
                 .unsqueeze(0)?
                 .matmul(&(s.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
-                .squeeze(1)?
-                .squeeze(0)?
+                .sum_all()?
                 .to_scalar::<f64>()?
                 + 1e-10)
                 .powi(-1);
-            // let rho = ((y * s)?
-            //     .sum_all()?
-            //     .to_dtype(candle_core::DType::F64)?
-            //     .to_scalar::<f64>()?
-            //     + 1e-10)
-            //     .powi(-1);
 
             let alpha = rho
                 * s.unsqueeze(0)?
                     .matmul(&(q.unsqueeze(1)?))?
                     .to_dtype(candle_core::DType::F64)?
-                    .squeeze(1)?
-                    .squeeze(0)?
+                    .sum_all()?
                     .to_scalar::<f64>()?;
-
-            // let alpha = rho
-            //     * (s * q.as_tensor())?
-            //         .sum_all()?
-            //         .to_dtype(candle_core::DType::F64)?
-            //         .to_scalar::<f64>()?;
 
             q.set(&q.sub(&(y * alpha)?)?)?;
             // we are iterating in reverse and so want to insert at the front of the VecDeque
@@ -237,14 +203,9 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 * y.unsqueeze(0)?
                     .matmul(&(q.unsqueeze(1)?))?
                     .to_dtype(candle_core::DType::F64)?
-                    .squeeze(1)?
-                    .squeeze(0)?
+                    .sum_all()?
                     .to_scalar::<f64>()?;
-            // let beta = rho
-            //     * (y * q.as_tensor())?
-            //         .sum_all()?
-            //         .to_dtype(candle_core::DType::F64)?
-            //         .to_scalar::<f64>()?;
+
             q.set(&q.add(&(s * (alpha - beta))?)?)?;
         }
 
@@ -253,8 +214,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             .unsqueeze(0)?
             .matmul(&(q.unsqueeze(1)?))?
             .to_dtype(candle_core::DType::F64)?
-            .squeeze(1)?
-            .squeeze(0)?
+            .sum_all()?
             .to_scalar::<f64>()?;
 
         let mut lr = if self.first {
