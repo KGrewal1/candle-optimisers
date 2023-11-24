@@ -23,11 +23,19 @@ anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
 candle-datasets ={ git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
 clap = {version = "4.4.6", features = ["derive"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "mnist_bench"
+harness = false
 
 [features]
 default = []
 cuda = ["candle-core/cuda", "candle-nn/cuda"]
 mkl = ["dep:intel-mkl-src", "candle-core/mkl"]
+
+[profile.bench]
+lto = true # maximal LTO optimisaiton
 
 [lints.clippy]
 pedantic = "warn"
@@ -40,4 +48,4 @@ imprecise_flops = "warn"
 missing_errors_doc = {level =  "allow", priority = 1}
 uninlined_format_args = {level =  "allow", priority = 1}
 similar_names = {level =  "allow", priority = 1}
-float_cmp = {level =  "allow", priority = 1} # as internaly rounded
+float_cmp = {level =  "allow", priority = 1} # as internaly rounded before the comparison
