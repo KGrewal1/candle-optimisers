@@ -27,6 +27,10 @@ A crate for optimisers for use with [candle](https://github.com/huggingface/cand
 
 These are all checked against their pytorch implementation (see pytorch_test.ipynb) and should implement the same functionality (though without some input checking).
 
+* LBFGS
+
+This is not implemented equivalent to pytorch, but is checked on the 2D rosenbrock function
+
 ## Examples
 
 There is an mnist toy program along with a simple example of adagrad. Whilst the parameters of each method aren't tuned (all default with user input learning rate), the following converges quite nicely:
@@ -57,7 +61,7 @@ Currently unimplemented from pytorch:
 
 * ASGD (no pseudocode)
 
-* LBFGS (need to reformulate in terms of tensors / no pseudocode)
+* LBFGS: speed up, remove unnecessary evals
 
 * Rprop (need to reformulate in terms of tensors)
 
