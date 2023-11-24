@@ -89,14 +89,17 @@ impl<M: Model> Lbfgs<M> {
             .max(0)?
             .to_dtype(candle_core::DType::F64)?
             .to_scalar::<f64>()?;
-        // let g = g.clone();
+
         // evaluate objective and gradient using initial step
         let (mut f_new, g_new) = self.directional_evaluate(step_size, direction)?; //obj_func(x, t, &d);
         let g_new = Var::from_tensor(&g_new)?;
         let mut ls_func_evals = 1;
-        let mut gtd_new = (g_new.as_tensor() * direction)?
-            .sum_all()?
+        let mut gtd_new = g_new
+            .unsqueeze(0)?
+            .matmul(&(direction.unsqueeze(1)?))?
             .to_dtype(candle_core::DType::F64)?
+            .squeeze(1)?
+            .squeeze(0)?
             .to_scalar::<f64>()?;
 
         // bracket an interval containing a point satisfying the Wolfe criteria
@@ -104,9 +107,7 @@ impl<M: Model> Lbfgs<M> {
         let (mut t_prev, mut f_prev, mut gtd_prev) = (0., loss, directional_grad);
         let mut done = false;
         let mut ls_iter = 0;
-        // let mut bracket;
-        // let mut bracket_f;
-        // let mut bracket_g;
+
         let mut bracket_gtd;
         let (mut bracket, mut bracket_f, bracket_g) = loop {
             //while ls_iter < max_ls
@@ -114,9 +115,6 @@ impl<M: Model> Lbfgs<M> {
             if f_new > (loss + c1 * step_size * directional_grad)
                 || (ls_iter > 1 && f_new >= f_prev)
             {
-                // bracket = [t_prev, t];
-                // bracket_f = [f_prev, f_new];
-                // bracket_g = [g_prev, g_new.clone()];
                 bracket_gtd = [gtd_prev, gtd_new];
                 break (
                     [t_prev, step_size],
@@ -126,9 +124,6 @@ impl<M: Model> Lbfgs<M> {
             }
 
             if gtd_new.abs() <= -c2 * directional_grad {
-                // bracket = [t, t];
-                // bracket_f = [f_new, f_new];
-                // bracket_g = [g_new.clone(), g_new.clone()];
                 done = true;
                 bracket_gtd = [gtd_prev, gtd_new];
                 break (
@@ -142,9 +137,6 @@ impl<M: Model> Lbfgs<M> {
             }
 
             if gtd_new >= 0. {
-                // bracket = [t_prev, t];
-                // bracket_f = [f_prev, f_new];
-                // bracket_g = [g_prev, g_new.clone()];
                 bracket_gtd = [gtd_prev, gtd_new];
                 break (
                     [t_prev, step_size],
@@ -179,17 +171,18 @@ impl<M: Model> Lbfgs<M> {
             g_new.set(&next_g)?;
             //
             ls_func_evals += 1;
-            gtd_new = (g_new.as_tensor() * direction)?
-                .sum_all()?
+
+            gtd_new = g_new
+                .unsqueeze(0)?
+                .matmul(&(direction.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?;
             ls_iter += 1;
 
             // reached max number of iterations?
             if ls_iter == max_ls {
-                // let bracket = [0., t];
-                // let bracket_f = [f, f_new];
-                // let bracket_g = [g, g_new];
                 bracket_gtd = [gtd_prev, gtd_new];
                 break (
                     [0., step_size],
@@ -263,9 +256,13 @@ impl<M: Model> Lbfgs<M> {
             f_new = next_f;
             g_new.set(&next_g)?;
             ls_func_evals += 1;
-            gtd_new = (g_new.as_tensor() * direction)?
-                .sum_all()?
+
+            gtd_new = g_new
+                .unsqueeze(0)?
+                .matmul(&(direction.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?;
             ls_iter += 1;
 
