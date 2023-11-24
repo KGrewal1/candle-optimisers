@@ -150,14 +150,16 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .unsqueeze(0)?
                 .matmul(&(s.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
-                .sum_all()?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?;
 
             let denom = y
                 .unsqueeze(0)?
                 .matmul(&(y.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
-                .sum_all()?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?
                 + 1e-10;
 
@@ -173,7 +175,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 .unsqueeze(0)?
                 .matmul(&(s.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
-                .sum_all()?
+                .squeeze(1)?
+                .squeeze(0)?
                 .to_scalar::<f64>()?
                 + 1e-10)
                 .powi(-1);
@@ -182,7 +185,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 * s.unsqueeze(0)?
                     .matmul(&(q.unsqueeze(1)?))?
                     .to_dtype(candle_core::DType::F64)?
-                    .sum_all()?
+                    .squeeze(1)?
+                    .squeeze(0)?
                     .to_scalar::<f64>()?;
 
             q.set(&q.sub(&(y * alpha)?)?)?;
@@ -203,7 +207,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                 * y.unsqueeze(0)?
                     .matmul(&(q.unsqueeze(1)?))?
                     .to_dtype(candle_core::DType::F64)?
-                    .sum_all()?
+                    .squeeze(1)?
+                    .squeeze(0)?
                     .to_scalar::<f64>()?;
 
             q.set(&q.add(&(s * (alpha - beta))?)?)?;
@@ -214,7 +219,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             .unsqueeze(0)?
             .matmul(&(q.unsqueeze(1)?))?
             .to_dtype(candle_core::DType::F64)?
-            .sum_all()?
+            .squeeze(1)?
+            .squeeze(0)?
             .to_scalar::<f64>()?;
 
         let mut lr = if self.first {
