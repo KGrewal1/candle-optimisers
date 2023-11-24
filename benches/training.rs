@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use candle_core::{DType, Result, Tensor, Var, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 
@@ -145,7 +143,7 @@ impl Model for Mlp {
 
 #[allow(clippy::module_name_repetitions)]
 pub fn run_training<M: SimpleModel + Model, O: Optim>(
-    m: Rc<candle_datasets::vision::Dataset>,
+    m: &candle_datasets::vision::Dataset,
 ) -> anyhow::Result<()> {
     // check to see if cuda device availabke
     let dev = candle_core::Device::cuda_if_available(0)?;
@@ -180,7 +178,7 @@ pub fn run_training<M: SimpleModel + Model, O: Optim>(
 
 #[allow(clippy::module_name_repetitions)]
 pub fn run_lbfgs_training<M: SimpleModel + Model>(
-    m: Rc<candle_datasets::vision::Dataset>,
+    m: &candle_datasets::vision::Dataset,
 ) -> anyhow::Result<()> {
     // check to see if cuda device availabke
     let dev = candle_core::Device::cuda_if_available(0)?;
