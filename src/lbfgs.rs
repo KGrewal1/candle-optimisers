@@ -240,15 +240,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
             match ls {
                 LineSearch::StrongWolfe(c1, c2, tol) => {
                     let (_loss, _grad, t, steps) = self.strong_wolfe(
-                        lr,
-                        &q,
-                        loss.to_dtype(candle_core::DType::F64)?.to_scalar()?,
-                        &grad,
-                        dd,
-                        *c1,
-                        *c2,
-                        *tol,
-                        25,
+                        lr, &q, loss, //.to_dtype(candle_core::DType::F64)?.to_scalar()?
+                        &grad, dd, *c1, *c2, *tol, 25,
                     )?;
                     evals += steps;
                     lr = t;
@@ -358,7 +351,7 @@ fn set_vs(vs: &mut [Var], vals: &Vec<Tensor>) -> CResult<()> {
 }
 
 impl<M: Model> Lbfgs<M> {
-    fn directional_evaluate(&mut self, mag: f64, direction: &Tensor) -> CResult<(f64, Tensor)> {
+    fn directional_evaluate(&mut self, mag: f64, direction: &Tensor) -> CResult<(Tensor, Tensor)> {
         // need to cache the original result
         // Otherwise leads to drift over line search evals
         let original = self
@@ -373,7 +366,7 @@ impl<M: Model> Lbfgs<M> {
         set_vs(&mut self.vars, &original)?;
         // add_grad(&mut self.vars, &(-mag * direction)?)?;
         Ok((
-            loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?,
+            loss, //.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?
             grad,
         ))
     }
