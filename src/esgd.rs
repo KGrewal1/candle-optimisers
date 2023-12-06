@@ -192,23 +192,21 @@ impl Optimizer for SGD {
                     }
                 }
             }
-        } else {
-            if let Some(wd) = self.params.weight_decay {
-                for var in &mut self.vars {
-                    let theta = &var.theta;
-                    // let prev_step = var.b;
-                    if let Some(grad) = grads.get(theta) {
-                        let grad = &(grad + (wd * theta.as_tensor())?)?; // weight decay grad
-                        theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta
-                    }
+        } else if let Some(wd) = self.params.weight_decay {
+            for var in &mut self.vars {
+                let theta = &var.theta;
+                // let prev_step = var.b;
+                if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (wd * theta.as_tensor())?)?; // weight decay grad
+                    theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta
                 }
-            } else {
-                for var in &mut self.vars {
-                    let theta = &var.theta;
-                    // let prev_step = var.b;
-                    if let Some(grad) = grads.get(theta) {
-                        theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta based on grad
-                    }
+            }
+        } else {
+            for var in &mut self.vars {
+                let theta = &var.theta;
+                // let prev_step = var.b;
+                if let Some(grad) = grads.get(theta) {
+                    theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta based on grad
                 }
             }
         }
