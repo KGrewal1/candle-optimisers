@@ -7,6 +7,8 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
+use crate::Decay;
+
 /// Adagrad optimiser
 ///
 /// Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
@@ -36,7 +38,7 @@ pub struct ParamsAdaGrad {
     /// Initial value of accumulator
     pub initial_acc: f64,
     /// weight decay
-    pub weight_decay: Option<f64>,
+    pub weight_decay: Option<Decay>,
     /// term added to the denominator to improve numerical stability
     pub eps: f64,
 }
@@ -83,18 +85,41 @@ impl Optimizer for Adagrad {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        if let Some(wd) = self.params.weight_decay {
-            for var in &self.vars {
-                let theta = &var.theta;
-                let sum = &var.sum;
-                if let Some(grad) = grads.get(theta) {
-                    let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
-                    let grad = &(grad + (wd * theta.as_tensor())?)?;
-                    let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
-                    let change =
-                        (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
-                    sum.set(&current_sum)?;
-                    theta.set(&theta.sub(&change)?)?;
+        if let Some(decay) = self.params.weight_decay {
+            match decay {
+                Decay::WeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let sum = &var.sum;
+                        if let Some(grad) = grads.get(theta) {
+                            let gamma_tilde =
+                                self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
+                            let grad = &(grad + (decay * theta.as_tensor())?)?;
+                            let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
+                            let change = (gamma_tilde
+                                * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
+                            sum.set(&current_sum)?;
+                            theta.set(&theta.sub(&change)?)?;
+                        }
+                    }
+                }
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let sum = &var.sum;
+                        if let Some(grad) = grads.get(theta) {
+                            // decoupled weight decay step
+                            theta
+                                .set(&(theta.as_tensor() * self.params.lr.mul_add(-decay, 1.))?)?;
+                            let gamma_tilde =
+                                self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
+                            let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
+                            let change = (gamma_tilde
+                                * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
+                            sum.set(&current_sum)?;
+                            theta.set(&theta.sub(&change)?)?;
+                        }
+                    }
                 }
             }
         } else {

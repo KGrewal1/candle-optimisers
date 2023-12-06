@@ -7,11 +7,17 @@
 
 A crate for optimisers for use with [candle](https://github.com/huggingface/candle), the minimalist ML framework
 
+Optimisers implemented are:
+
 * SGD (including momentum and weight decay)
 
-* AdaGrad
+* RMSprop
+
+Adaptive methods:
 
 * AdaDelta
+
+* AdaGrad
 
 * AdaMax
 
@@ -23,9 +29,11 @@ A crate for optimisers for use with [candle](https://github.com/huggingface/cand
 
 * RAdam
 
-* RMSprop
-
 These are all checked against their pytorch implementation (see pytorch_test.ipynb) and should implement the same functionality (though without some input checking).
+
+Additionally all of the adaptive mehods listed implement decoupled weight decay as described in [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf), in addition to the standard weight decay as implemented in pytorch.
+
+Pseudosecond order methods:
 
 * LBFGS
 
