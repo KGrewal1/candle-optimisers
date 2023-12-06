@@ -325,6 +325,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     }
 }
 
+#[allow(clippy::inline_always)]
 #[inline(always)]
 fn flat_grads(vs: &Vec<Var>, loss: &Tensor, weight_decay: Option<f64>) -> CResult<Tensor> {
     let grads = loss.backward()?;
