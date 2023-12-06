@@ -1,11 +1,15 @@
-//! The Adagrad optimiser
+//! Adagrad optimiser
+//!
+//! Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adagrad.html>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
 /// Adagrad optimiser
 ///
-/// Described in <https://jmlr.org/papers/v12/duchi11a.html>
+/// Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
 ///
 /// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adagrad.html>
 
@@ -22,12 +26,18 @@ struct VarAdaGrad {
     sum: Var,
 }
 
+/// Parameters for the Adagrad optimiser
 #[derive(Debug)]
 pub struct ParamsAdaGrad {
+    /// Learning rate
     pub lr: f64,
+    /// Learning rate decay
     pub lr_decay: f64,
+    /// Initial value of accumulator
     pub initial_acc: f64,
+    /// weight decay
     pub weight_decay: Option<f64>,
+    /// term added to the denominator to improve numerical stability
     pub eps: f64,
 }
 

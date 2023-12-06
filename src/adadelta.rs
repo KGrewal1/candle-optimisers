@@ -1,14 +1,17 @@
-//! The Adadelta optimiser
+//! Adadelta optimiser
+//!
+//! Described in [ADADELTA: An Adaptive Learning Rate Method](https://arxiv.org/abs/1212.5701)
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adadelta.html>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
 /// Adadelta optimiser
 ///
-/// Described in <https://arxiv.org/abs/1212.5701>
+/// Described in [ADADELTA: An Adaptive Learning Rate Method](https://arxiv.org/abs/1212.5701)
 ///
 /// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adadelta.html>
-
 #[derive(Debug)]
 pub struct Adadelta {
     vars: Vec<VarAdaDelta>,
@@ -23,11 +26,16 @@ struct VarAdaDelta {
     u: Var,
 }
 
+/// Parameters for the Adadelta optimiser
 #[derive(Debug)]
 pub struct ParamsAdaDelta {
+    /// Learning rate
     pub lr: f64,
+    /// Decay
     pub rho: f64,
+    /// Term added to the denominator to improve numerical stability
     pub eps: f64,
+    /// Weight decay
     pub weight_decay: Option<f64>,
 }
 

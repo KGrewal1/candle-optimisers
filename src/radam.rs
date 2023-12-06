@@ -1,11 +1,15 @@
 //! The R Adam optimiser
+//!
+//! Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
 /// R Adam optimiser
 ///
-/// Described in <https://arxiv.org/abs/1908.03265>
+/// Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
 ///
 /// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
 
@@ -24,12 +28,18 @@ struct VarRAdam {
     v: Var,
 }
 
+/// Parameters for the R Adam optimiser
 #[derive(Debug)]
 pub struct ParamsRAdam {
+    /// Learning rate
     pub lr: f64,
+    /// Coefficient for moving average of first moment
     pub beta_1: f64,
+    /// Coefficient for moving average of second moment
     pub beta_2: f64,
+    /// Weight decay
     pub weight_decay: Option<f64>,
+    /// Term added to denominator to improve numerical stability
     pub eps: f64,
 }
 

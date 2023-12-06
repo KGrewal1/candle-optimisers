@@ -23,13 +23,17 @@ struct VarMESGD {
     b: Option<Var>,
 }
 
+/// Parameters for SGD
 #[derive(Debug)]
 pub struct ParamsMESGD {
+    /// Learning rate
     pub lr: f64,
+    /// Weight decay
     pub weight_decay: Option<f64>,
+    /// Momentum
     pub momentum: Momentum,
+    /// Dampening
     pub dampening: f64,
-    // pub nesterov: bool,
 }
 
 impl Default for ParamsMESGD {

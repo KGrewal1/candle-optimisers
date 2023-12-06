@@ -1,4 +1,8 @@
 //! The N Adam optimiser: Adam with Nesterov momentum
+//!
+//! Described in [Incorporating Nesterov Momentum into Adam](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
+//!
+//! For pseudocode see <https://pytorch.org/docs/stable/generated/torch.optim.NAdam.html#nadam>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -29,13 +33,20 @@ struct VarNAdam {
     v: Var,
 }
 
+/// Parameters for The N Adam optimiser
 #[derive(Debug)]
 pub struct ParamsNAdam {
+    /// Learning rate
     pub lr: f64,
+    /// Coefficient for moving average of first moment
     pub beta_1: f64,
+    /// Coefficient for moving average of second moment
     pub beta_2: f64,
+    /// Term added to denominator to improve numerical stability
     pub eps: f64,
+    /// Weight decay
     pub weight_decay: Option<Decay>,
+    /// Momentum decay
     pub momentum_decay: f64,
 }
 

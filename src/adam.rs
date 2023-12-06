@@ -1,4 +1,14 @@
-//! The Adam optimiser
+//! Adam optimiser
+//!
+//! This includes Adam W via use of decoupled weight decay
+//!
+//! Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
+//! and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
+//!
+//! The AMSGrad variant is also implemented, described in [On the Convergence of Adam and Beyond](https://openreview.net/forum?id=ryQu7f-RZ)
+//!
+//! For pseudocode see <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam> and
+//! <https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html#torch.optim.AdamW>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -7,11 +17,15 @@ use crate::Decay;
 
 /// Adam optimiser
 ///
-/// Described in <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>
+/// This includes Adam W via use of decoupled weight decay
 ///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam>
-/// Note that this is the same as pytorch implementation not pseudocode (hat of vmax not max of vhat)
-/// This includes decoupled weight decay (Adam W)
+/// Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
+/// and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
+///
+/// The AMSGrad variant is also implemented, described in [On the Convergence of Adam and Beyond](https://openreview.net/forum?id=ryQu7f-RZ)
+///
+/// For pseudocode see <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam> and
+/// <https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html#torch.optim.AdamW>
 
 trait AdamInner {
     fn new(vars: Vec<Var>) -> Result<Self>
@@ -271,16 +285,22 @@ enum VarAdam {
     VecAdamAmsgrad(VecAdamAmsgrad),
 }
 
+/// Parameters for the Adam optimiser
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct ParamsAdam {
+    /// Learning rate
     pub lr: f64,
+    /// Coefficient for moving average of first moment
     pub beta_1: f64,
+    /// Coefficient for moving average of second moment
     pub beta_2: f64,
+    /// Term added to denominator to improve numerical stability
     pub eps: f64,
+    /// Weight decay
     pub weight_decay: Option<Decay>,
+    /// Whether to use AMSGrad variant
     pub amsgrad: bool,
-    // pub decoupled_weight_decay: bool,
 }
 
 impl Default for ParamsAdam {

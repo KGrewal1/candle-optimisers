@@ -1,8 +1,15 @@
-use std::collections::VecDeque;
+//! LBFGS optimiser
+//!
+//! A pseudo second order optimiser based on the BFGS method.
+//!
+//! Described in [On the limited memory BFGS method for large scale optimization](https://link.springer.com/article/10.1007/BF01589116)
+//!
+//! <https://sagecal.sourceforge.net/pytorch/index.html>
 
 use crate::{LossOptimizer, Model, ModelOutcome};
 use candle_core::Result as CResult;
 use candle_core::{Tensor, Var};
+use std::collections::VecDeque;
 // use candle_nn::optim::Optimizer;
 
 mod strong_wolfe;
@@ -33,22 +40,21 @@ pub enum StepConv {
     RMSStep(f64),
 }
 
-/// LBFGS optimiser: see Nocedal
-///
-/// Described in <https://link.springer.com/article/10.1007/BF01589116>]
-///
-/// <https://sagecal.sourceforge.net/pytorch/index.html>
-/// <https://github.com/hjmshi/PyTorch-LBFGS/blob/master/functions/LBFGS.py>
-
+/// Parameters for LBFGS optimiser
 #[derive(Clone, Copy, Debug)]
 pub struct ParamsLBFGS {
+    /// 'Learning rate': used for initial step size guess
+    /// and when no line search is used
     pub lr: f64,
-    // pub max_iter: usize,
-    // pub max_eval: Option<usize>,
+    /// size of history to retain
     pub history_size: usize,
+    /// linesearch method to use
     pub line_search: Option<LineSearch>,
+    /// convergence criteria for gradient
     pub grad_conv: GradConv,
+    /// convergence criteria for step size
     pub step_conv: StepConv,
+    /// weight decay
     pub weight_decay: Option<f64>,
 }
 
@@ -67,6 +73,13 @@ impl Default for ParamsLBFGS {
     }
 }
 
+/// LBFGS optimiser
+///
+/// A pseudo second order optimiser based on the BFGS method.
+///
+/// Described in [On the limited memory BFGS method for large scale optimization](https://link.springer.com/article/10.1007/BF01589116)
+///
+/// <https://sagecal.sourceforge.net/pytorch/index.html>
 #[derive(Debug)]
 pub struct Lbfgs<M: Model> {
     vars: Vec<Var>,

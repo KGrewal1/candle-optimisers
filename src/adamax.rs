@@ -1,13 +1,17 @@
 //! The Adamax optimiser
+//!
+//! An Adam optimiser based on infinity norm, described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adamax.html#torch.optim.Adamax>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
 /// Adamax optimiser
 ///
-/// Described in <https://arxiv.org/abs/1412.6980>
+/// An Adam optimiser based on infinity norm, described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
 ///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adamax.html>
+/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adamax.html#torch.optim.Adamax>
 
 #[derive(Debug)]
 pub struct Adamax {
@@ -23,12 +27,18 @@ struct VarAdaMax {
     u: Var,
 }
 
+/// Parameters for the Adamax optimiser
 #[derive(Debug)]
 pub struct ParamsAdaMax {
+    /// Learning rate
     pub lr: f64,
+    /// Coefficient for moving average of first moment
     pub beta_1: f64,
+    /// Coefficient for moving average of second moment
     pub beta_2: f64,
+    /// Weight decay
     pub weight_decay: Option<f64>,
+    /// Term added to denominator to improve numerical stability
     pub eps: f64,
 }
 

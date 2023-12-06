@@ -1,4 +1,8 @@
-//! The RMS prop algoirithm
+//! The RMS prop algorithm
+//!
+//! Described in <https://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html#torch.optim.RMSprop>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -374,13 +378,20 @@ enum VarRMS {
     MomentumCentered(VecRmsPropMomentumCentered),
 }
 
+/// Parameters for RMSprop
 #[derive(Debug)]
 pub struct ParamsRMSprop {
+    /// Learning rate
     pub lr: f64,
+    /// Smoothing constant
     pub alpha: f64,
+    /// Term added to the denominator to improve numerical stability
     pub eps: f64,
+    /// Weight decay
     pub weight_decay: Option<f64>,
+    /// Momentum
     pub momentum: Option<f64>,
+    /// Whether to use centered RMSprop, normalising the gradient by an estimate of its variance
     pub centered: bool,
 }
 

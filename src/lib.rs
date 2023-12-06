@@ -44,6 +44,7 @@ pub trait LossOptimizer<M: Model>: Sized {
     }
 }
 
+/// Outcomes of an optimiser step for methods such as LBFGS
 #[derive(Debug)]
 pub enum ModelOutcome {
     /// The model took a step and the loss decreased
@@ -54,18 +55,16 @@ pub enum ModelOutcome {
     Converged(Tensor, usize),
 }
 
-// #[derive(Clone, Copy, Debug)]
-// pub struct WeightDecay(f64);
-
-// #[derive(Clone, Copy, Debug)]
-// pub struct DecoupledWeightDecay(f64);
-
+/// Method of weight decay to use
 #[derive(Clone, Copy, Debug)]
 pub enum Decay {
+    /// weight decay regularisation to penalise large weights
     WeightDecay(f64),
+    /// Decoupled weight decay as described in <https://arxiv.org/abs/1711.05101>
     DecoupledWeightDecay(f64),
 }
 
+/// Type of momentum to use
 #[derive(Copy, Clone, Debug)]
 pub enum Momentum {
     /// classical momentum
@@ -73,15 +72,3 @@ pub enum Momentum {
     /// nesterov momentum
     Nesterov(f64),
 }
-
-// impl From<WeightDecay> for Decay {
-//     fn from(wd: WeightDecay) -> Self {
-//         Decay::WeightDecay(wd)
-//     }
-// }
-
-// impl From<DecoupledWeightDecay> for Decay {
-//     fn from(wd: DecoupledWeightDecay) -> Self {
-//         Decay::DecoupledWeightDecay(wd)
-//     }
-// }
