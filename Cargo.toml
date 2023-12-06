@@ -1,6 +1,6 @@
 [package]
 name = "optimisers"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
@@ -16,6 +16,7 @@ repository = "https://github.com/KGrewal1/optimisers"
 candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
 candle-nn = { git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
 intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"], optional = true }
+log = "0.4.20"
 
 
 [dev-dependencies]
@@ -49,3 +50,4 @@ missing_errors_doc = {level =  "allow", priority = 1}
 uninlined_format_args = {level =  "allow", priority = 1}
 similar_names = {level =  "allow", priority = 1}
 float_cmp = {level =  "allow", priority = 1} # as internaly rounded before the comparison
+doc_markdown= {level =  "allow", priority = 1} # otherwise names get flagged

@@ -1,11 +1,15 @@
-//! The Adagrad optimiser
+//! Adagrad optimiser
+//!
+//! Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adagrad.html>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
 /// Adagrad optimiser
 ///
-/// Described in <https://jmlr.org/papers/v12/duchi11a.html>
+/// Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
 ///
 /// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adagrad.html>
 
@@ -22,13 +26,18 @@ struct VarAdaGrad {
     sum: Var,
 }
 
+/// Parameters for the Adagrad optimiser
 #[derive(Debug)]
 pub struct ParamsAdaGrad {
+    /// Learning rate
     pub lr: f64,
+    /// Learning rate decay
     pub lr_decay: f64,
+    /// Initial value of accumulator
     pub initial_acc: f64,
-    pub dampening: f64,
-    pub weight_decay: f64,
+    /// weight decay
+    pub weight_decay: Option<f64>,
+    /// term added to the denominator to improve numerical stability
     pub eps: f64,
 }
 
@@ -38,8 +47,7 @@ impl Default for ParamsAdaGrad {
             lr: 0.01,
             lr_decay: 0.0,
             initial_acc: 0.0,
-            dampening: 0.0,
-            weight_decay: 0.0,
+            weight_decay: None,
             eps: 1e-10,
         }
     }
@@ -75,12 +83,13 @@ impl Optimizer for Adagrad {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        if self.params.weight_decay == 0. {
+        if let Some(wd) = self.params.weight_decay {
             for var in &self.vars {
                 let theta = &var.theta;
                 let sum = &var.sum;
                 if let Some(grad) = grads.get(theta) {
                     let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
+                    let grad = &(grad + (wd * theta.as_tensor())?)?;
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
@@ -94,7 +103,6 @@ impl Optimizer for Adagrad {
                 let sum = &var.sum;
                 if let Some(grad) = grads.get(theta) {
                     let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
-                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;

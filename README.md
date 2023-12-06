@@ -7,7 +7,7 @@
 
 A crate for optimisers for use with [candle](https://github.com/huggingface/candle), the minimalist ML framework
 
-* Momentum enhanced SGD
+* SGD (including momentum and weight decay)
 
 * AdaGrad
 
@@ -60,8 +60,6 @@ Currently unimplemented from pytorch:
 * SparseAdam (unsure how to treat sparse tensors in candle)
 
 * ASGD (no pseudocode)
-
-* LBFGS: speed up, remove unnecessary evals
 
 * Rprop (need to reformulate in terms of tensors)
 

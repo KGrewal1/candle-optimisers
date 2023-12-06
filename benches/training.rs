@@ -5,7 +5,7 @@ use optimisers::adadelta::{Adadelta, ParamsAdaDelta};
 use optimisers::adagrad::{Adagrad, ParamsAdaGrad};
 use optimisers::adam::{Adam, ParamsAdam};
 use optimisers::adamax::{Adamax, ParamsAdaMax};
-use optimisers::esgd::{MomentumEnhancedSGD, ParamsMESGD};
+use optimisers::esgd::{ParamsSGD, SGD};
 use optimisers::lbfgs::{Lbfgs, LineSearch, ParamsLBFGS};
 use optimisers::nadam::{NAdam, ParamsNAdam};
 use optimisers::radam::{ParamsRAdam, RAdam};
@@ -47,9 +47,9 @@ impl Optim for Adamax {
     }
 }
 
-impl Optim for MomentumEnhancedSGD {
+impl Optim for SGD {
     fn new(vars: Vec<Var>) -> Result<Self> {
-        <MomentumEnhancedSGD as Optimizer>::new(vars, ParamsMESGD::default())
+        <SGD as Optimizer>::new(vars, ParamsSGD::default())
     }
 
     fn back_step(&mut self, loss: &Tensor) -> Result<()> {
@@ -176,6 +176,7 @@ pub fn run_training<M: SimpleModel + Model, O: Optim>(
     Ok(())
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub fn run_lbfgs_training<M: SimpleModel + Model>(
     m: &candle_datasets::vision::Dataset,
 ) -> anyhow::Result<()> {
@@ -196,7 +197,7 @@ pub fn run_lbfgs_training<M: SimpleModel + Model>(
 
     let params = ParamsLBFGS {
         lr: 1.,
-        history_size: 10,
+        history_size: 4,
         line_search: Some(LineSearch::StrongWolfe(1e-4, 0.9, 1e-9)),
         ..Default::default()
     };

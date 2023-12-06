@@ -1,6 +1,8 @@
 //! Optimisers for use with the candle framework for lightweight machine learning.
 //! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
 
+use std::fmt::Debug;
+
 use candle_core::Result as CResult;
 use candle_core::Tensor;
 use candle_core::Var;
@@ -14,7 +16,7 @@ pub mod nadam;
 pub mod radam;
 pub mod rmsprop;
 
-/// trait for Models: this will be needed for optimisers that require the ability to calculate the loss
+/// Trait for Models: this is needed for optimisers that require the ability to calculate the loss
 /// such as LBFGS
 ///
 /// This is largely the same as the trait defined in the MNIST example in the main candle repo
@@ -42,6 +44,7 @@ pub trait LossOptimizer<M: Model>: Sized {
     }
 }
 
+/// Outcomes of an optimiser step for methods such as LBFGS
 #[derive(Debug)]
 pub enum ModelOutcome {
     /// The model took a step and the loss decreased
@@ -50,4 +53,22 @@ pub enum ModelOutcome {
     /// The model has converged and the loss has not changed
     /// contains loss and the number of func evals
     Converged(Tensor, usize),
+}
+
+/// Method of weight decay to use
+#[derive(Clone, Copy, Debug)]
+pub enum Decay {
+    /// weight decay regularisation to penalise large weights
+    WeightDecay(f64),
+    /// Decoupled weight decay as described in <https://arxiv.org/abs/1711.05101>
+    DecoupledWeightDecay(f64),
+}
+
+/// Type of momentum to use
+#[derive(Copy, Clone, Debug)]
+pub enum Momentum {
+    /// classical momentum
+    Classical(f64),
+    /// nesterov momentum
+    Nesterov(f64),
 }

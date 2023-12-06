@@ -9,7 +9,10 @@ use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 use anyhow::Result;
 use candle_core::{Device, Tensor, Var};
 use candle_nn::{Linear, Module, Optimizer};
-use optimisers::adam::{Adam, ParamsAdam};
+use optimisers::{
+    adam::{Adam, ParamsAdam},
+    Decay,
+};
 
 /* The results of this test have been checked against the following PyTorch code.
     import torch
@@ -102,7 +105,7 @@ fn adam_weight_decay_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsAdam {
-        weight_decay: 0.6,
+        weight_decay: Some(Decay::WeightDecay(0.6)),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -158,8 +161,8 @@ fn adamw_weight_decay_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsAdam {
-        weight_decay: 0.6,
-        decoupled_weight_decay: true,
+        weight_decay: Some(Decay::DecoupledWeightDecay(0.6)),
+        // decoupled_weight_decay: true,
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -272,7 +275,7 @@ fn adam_amsgrad_decay_test() -> Result<()> {
 
     let params = ParamsAdam {
         amsgrad: true,
-        weight_decay: 0.6,
+        weight_decay: Some(Decay::WeightDecay(0.6)),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -328,9 +331,9 @@ fn adamw_amsgrad_decay_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsAdam {
-        weight_decay: 0.6,
+        weight_decay: Some(Decay::DecoupledWeightDecay(0.6)),
         amsgrad: true,
-        decoupled_weight_decay: true,
+        // decoupled_weight_decay: true,
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.

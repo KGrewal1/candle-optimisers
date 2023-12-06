@@ -201,3 +201,43 @@ fn lbfgs_rms_step_test() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn lbfgs_test_strong_wolfe_weight_decay() -> Result<()> {
+    let params = ParamsLBFGS {
+        lr: 1.,
+        line_search: Some(LineSearch::StrongWolfe(1e-4, 0.9, 1e-9)),
+        weight_decay: Some(0.1),
+        ..Default::default()
+    };
+
+    let model = RosenbrockModel::new()?;
+
+    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut loss = model.loss()?;
+
+    for _step in 0..500 {
+        // println!("\nstart step {}", step);
+        // for v in model.vars() {
+        //     println!("{}", v);
+        // }
+        let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
+                                               // println!("end step {}", _step);
+        match res {
+            optimisers::ModelOutcome::Converged(_, _) => break,
+            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            // _ => panic!("unexpected outcome"),
+        }
+    }
+
+    let expected = [2.914, 8.5018]; // this should be properly checked
+    for (v, e) in model.vars().iter().zip(expected) {
+        // println!("{}", v);
+        assert_eq!(to_vec2_round(&v.to_dtype(DType::F32)?, 4)?, &[[e]]);
+    }
+
+    // println!("{:?}", lbfgs);
+    // panic!("deliberate panic");
+
+    Ok(())
+}

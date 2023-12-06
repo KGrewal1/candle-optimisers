@@ -1,11 +1,15 @@
-//! The R Adam optimiser
+//! The RAdam optimiser
+//!
+//! Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
+//!
+//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
 /// R Adam optimiser
 ///
-/// Described in <https://arxiv.org/abs/1908.03265>
+/// Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
 ///
 /// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
 
@@ -24,12 +28,18 @@ struct VarRAdam {
     v: Var,
 }
 
+/// Parameters for the RAdam optimiser
 #[derive(Debug)]
 pub struct ParamsRAdam {
+    /// Learning rate
     pub lr: f64,
+    /// Coefficient for moving average of first moment
     pub beta_1: f64,
+    /// Coefficient for moving average of second moment
     pub beta_2: f64,
-    pub weight_decay: f64,
+    /// Weight decay
+    pub weight_decay: Option<f64>,
+    /// Term added to denominator to improve numerical stability
     pub eps: f64,
 }
 
@@ -40,7 +50,7 @@ impl Default for ParamsRAdam {
             beta_1: 0.9,
             beta_2: 0.999,
             eps: 1e-8,
-            weight_decay: 0.0,
+            weight_decay: None,
         }
     }
 }
@@ -82,12 +92,14 @@ impl Optimizer for RAdam {
         let rho_t = self.rho_inf
             - 2. * self.t * self.params.beta_2.powf(self.t)
                 / (1. - self.params.beta_2.powf(self.t));
-        if self.params.weight_decay == 0. {
+
+        if let Some(wd) = self.params.weight_decay {
             for var in &self.vars {
                 let theta = &var.theta;
                 let m = &var.m;
                 let v = &var.v;
                 if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (wd * theta.as_tensor())?)?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
                     let v_next = ((self.params.beta_2 * v.as_tensor())?
@@ -115,7 +127,6 @@ impl Optimizer for RAdam {
                 let m = &var.m;
                 let v = &var.v;
                 if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
                     let v_next = ((self.params.beta_2 * v.as_tensor())?

@@ -9,7 +9,7 @@ use models::{LinearModel, Mlp};
 
 use optimisers::adagrad::Adagrad;
 use optimisers::adamax::Adamax;
-use optimisers::esgd::MomentumEnhancedSGD;
+use optimisers::esgd::SGD;
 use optimisers::nadam::NAdam;
 use optimisers::radam::RAdam;
 use optimisers::rmsprop::RMSprop;
@@ -55,10 +55,8 @@ pub fn main() -> anyhow::Result<()> {
             WhichModel::Mlp => training_loop::<Mlp, Adamax>(m, &training_args),
         },
         WhichOptim::Sgd => match args.model {
-            WhichModel::Linear => {
-                training_loop::<LinearModel, MomentumEnhancedSGD>(m, &training_args)
-            }
-            WhichModel::Mlp => training_loop::<Mlp, MomentumEnhancedSGD>(m, &training_args),
+            WhichModel::Linear => training_loop::<LinearModel, SGD>(m, &training_args),
+            WhichModel::Mlp => training_loop::<Mlp, SGD>(m, &training_args),
         },
         WhichOptim::NAdam => match args.model {
             WhichModel::Linear => training_loop::<LinearModel, NAdam>(m, &training_args),
