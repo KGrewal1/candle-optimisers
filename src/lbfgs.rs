@@ -9,6 +9,7 @@
 use crate::{LossOptimizer, Model, ModelOutcome};
 use candle_core::Result as CResult;
 use candle_core::{Tensor, Var};
+use log::info;
 use std::collections::VecDeque;
 // use candle_nn::optim::Optimizer;
 
@@ -128,6 +129,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                     .to_scalar::<f64>()?
                     < tol
                 {
+                    info!("grad converged");
                     return Ok(ModelOutcome::Converged(loss.clone(), evals));
                 }
             }
@@ -140,6 +142,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                     .sqrt()
                     < tol
                 {
+                    info!("grad converged");
                     return Ok(ModelOutcome::Converged(loss.clone(), evals));
                 }
             }
@@ -290,6 +293,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                                 < tol
                             {
                                 add_grad(&mut self.vars, q.as_tensor())?;
+                                info!("step converged");
                                 Ok(ModelOutcome::Converged(loss, evals))
                             } else {
                                 add_grad(&mut self.vars, q.as_tensor())?;
@@ -305,6 +309,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
                                 < tol
                             {
                                 add_grad(&mut self.vars, q.as_tensor())?;
+                                info!("step converged");
                                 Ok(ModelOutcome::Converged(loss, evals))
                             } else {
                                 add_grad(&mut self.vars, q.as_tensor())?;
@@ -335,6 +340,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
                         let next_loss = self.model.loss()?;
                         evals += 1;
+                        info!("step converged");
                         Ok(ModelOutcome::Converged(next_loss, evals))
                     } else {
                         add_grad(&mut self.vars, q.as_tensor())?;
@@ -356,6 +362,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
 
                         let next_loss = self.model.loss()?;
                         evals += 1;
+                        info!("step converged");
                         Ok(ModelOutcome::Converged(next_loss, evals))
                     } else {
                         add_grad(&mut self.vars, q.as_tensor())?;
