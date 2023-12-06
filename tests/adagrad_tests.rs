@@ -54,7 +54,6 @@ fn adagrad_test() -> Result<()> {
         weight_decay: 0.0,
         initial_acc: 0.0,
         eps: 1e-10,
-        dampening: 0.0,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
@@ -114,7 +113,6 @@ fn adagrad_lr_decay_test() -> Result<()> {
         weight_decay: 0.0,
         initial_acc: 0.0,
         eps: 1e-10,
-        dampening: 0.0,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
@@ -174,7 +172,6 @@ fn adagrad_weight_decay_test() -> Result<()> {
         weight_decay: 0.2,
         initial_acc: 0.0,
         eps: 1e-10,
-        dampening: 0.0,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;

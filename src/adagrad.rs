@@ -27,7 +27,6 @@ pub struct ParamsAdaGrad {
     pub lr: f64,
     pub lr_decay: f64,
     pub initial_acc: f64,
-    pub dampening: f64,
     pub weight_decay: f64,
     pub eps: f64,
 }
@@ -38,7 +37,6 @@ impl Default for ParamsAdaGrad {
             lr: 0.01,
             lr_decay: 0.0,
             initial_acc: 0.0,
-            dampening: 0.0,
             weight_decay: 0.0,
             eps: 1e-10,
         }
