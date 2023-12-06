@@ -176,6 +176,7 @@ pub fn run_training<M: SimpleModel + Model, O: Optim>(
     Ok(())
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub fn run_lbfgs_training<M: SimpleModel + Model>(
     m: &candle_datasets::vision::Dataset,
 ) -> anyhow::Result<()> {
