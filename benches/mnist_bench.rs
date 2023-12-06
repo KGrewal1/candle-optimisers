@@ -2,8 +2,8 @@ use candle_core::Result as CResult;
 use candle_datasets::vision::Dataset;
 use criterion::{criterion_group, criterion_main, Criterion};
 use optimisers::{
-    adadelta::Adadelta, adagrad::Adagrad, adam::Adam, adamax::Adamax, esgd::MomentumEnhancedSGD,
-    nadam::NAdam, radam::RAdam, rmsprop::RMSprop,
+    adadelta::Adadelta, adagrad::Adagrad, adam::Adam, adamax::Adamax, esgd::SGD, nadam::NAdam,
+    radam::RAdam, rmsprop::RMSprop,
 };
 use training::Mlp;
 
@@ -42,8 +42,7 @@ pub fn criterion_benchmark_std(c: &mut Criterion) {
     });
     group.bench_function("esgd", |b| {
         b.iter(|| {
-            training::run_training::<Mlp, MomentumEnhancedSGD>(m)
-                .expect("Failed to setup training");
+            training::run_training::<Mlp, SGD>(m).expect("Failed to setup training");
         });
     });
     group.bench_function("nadam", |b| {

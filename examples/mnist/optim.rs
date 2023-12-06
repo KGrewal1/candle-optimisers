@@ -4,7 +4,7 @@ use optimisers::adadelta::{Adadelta, ParamsAdaDelta};
 use optimisers::adagrad::{Adagrad, ParamsAdaGrad};
 use optimisers::adam::{Adam, ParamsAdam};
 use optimisers::adamax::{Adamax, ParamsAdaMax};
-use optimisers::esgd::{MomentumEnhancedSGD, ParamsMESGD};
+use optimisers::esgd::{ParamsSGD, SGD};
 use optimisers::nadam::{NAdam, ParamsNAdam};
 use optimisers::radam::{ParamsRAdam, RAdam};
 use optimisers::rmsprop::{ParamsRMSprop, RMSprop};
@@ -62,11 +62,11 @@ impl Optim for Adamax {
     }
 }
 
-impl Optim for MomentumEnhancedSGD {
+impl Optim for SGD {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self> {
-        <MomentumEnhancedSGD as Optimizer>::new(
+        <SGD as Optimizer>::new(
             vars,
-            ParamsMESGD {
+            ParamsSGD {
                 lr,
                 ..Default::default()
             },
