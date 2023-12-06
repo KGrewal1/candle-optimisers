@@ -51,7 +51,7 @@ fn adadelta_test() -> Result<()> {
     let params = ParamsAdaDelta {
         lr: 0.004,
         rho: 0.9,
-        weight_decay: 0.0,
+        weight_decay: None,
         eps: 1e-6,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -81,7 +81,7 @@ fn adadelta_weight_decay_test() -> Result<()> {
     let params = ParamsAdaDelta {
         lr: 0.004,
         rho: 0.9,
-        weight_decay: 0.8,
+        weight_decay: Some(0.8),
         eps: 1e-6,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.

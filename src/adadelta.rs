@@ -28,7 +28,7 @@ pub struct ParamsAdaDelta {
     pub lr: f64,
     pub rho: f64,
     pub eps: f64,
-    pub weight_decay: f64,
+    pub weight_decay: Option<f64>,
 }
 
 impl Default for ParamsAdaDelta {
@@ -36,7 +36,7 @@ impl Default for ParamsAdaDelta {
         Self {
             lr: 1.0,
             rho: 0.9,
-            weight_decay: 0.0,
+            weight_decay: None,
             eps: 1e-6,
         }
     }
@@ -73,12 +73,13 @@ impl Optimizer for Adadelta {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        if self.params.weight_decay == 0. {
+        if let Some(wd) = self.params.weight_decay {
             for var in &self.vars {
                 let theta = &var.theta;
                 let v = &var.v;
                 let u = &var.u;
                 if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (wd * theta.as_tensor())?)?;
                     let v_next = ((v.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * grad.powf(2.)?)?;
                     let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
@@ -97,7 +98,6 @@ impl Optimizer for Adadelta {
                 let v = &var.v;
                 let u = &var.u;
                 if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let v_next = ((v.as_tensor() * self.params.rho)?
                         + (1. - self.params.rho) * grad.powf(2.)?)?;
                     let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)

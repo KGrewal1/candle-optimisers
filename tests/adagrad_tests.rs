@@ -51,7 +51,7 @@ fn adagrad_test() -> Result<()> {
     let params = ParamsAdaGrad {
         lr: 0.004,
         lr_decay: 0.0,
-        weight_decay: 0.0,
+        weight_decay: None,
         initial_acc: 0.0,
         eps: 1e-10,
     };
@@ -110,7 +110,7 @@ fn adagrad_lr_decay_test() -> Result<()> {
     let params = ParamsAdaGrad {
         lr: 0.004,
         lr_decay: 0.2,
-        weight_decay: 0.0,
+        weight_decay: None,
         initial_acc: 0.0,
         eps: 1e-10,
     };
@@ -169,7 +169,7 @@ fn adagrad_weight_decay_test() -> Result<()> {
     let params = ParamsAdaGrad {
         lr: 0.004,
         lr_decay: 0.0,
-        weight_decay: 0.2,
+        weight_decay: Some(0.2),
         initial_acc: 0.0,
         eps: 1e-10,
     };

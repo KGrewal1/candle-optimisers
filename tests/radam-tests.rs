@@ -102,7 +102,7 @@ fn radam_weight_decay_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsRAdam {
-        weight_decay: 0.4,
+        weight_decay: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.

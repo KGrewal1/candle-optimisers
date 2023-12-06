@@ -27,7 +27,7 @@ pub struct ParamsAdaGrad {
     pub lr: f64,
     pub lr_decay: f64,
     pub initial_acc: f64,
-    pub weight_decay: f64,
+    pub weight_decay: Option<f64>,
     pub eps: f64,
 }
 
@@ -37,7 +37,7 @@ impl Default for ParamsAdaGrad {
             lr: 0.01,
             lr_decay: 0.0,
             initial_acc: 0.0,
-            weight_decay: 0.0,
+            weight_decay: None,
             eps: 1e-10,
         }
     }
@@ -73,12 +73,13 @@ impl Optimizer for Adagrad {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        if self.params.weight_decay == 0. {
+        if let Some(wd) = self.params.weight_decay {
             for var in &self.vars {
                 let theta = &var.theta;
                 let sum = &var.sum;
                 if let Some(grad) = grads.get(theta) {
                     let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
+                    let grad = &(grad + (wd * theta.as_tensor())?)?;
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;
@@ -92,7 +93,6 @@ impl Optimizer for Adagrad {
                 let sum = &var.sum;
                 if let Some(grad) = grads.get(theta) {
                     let gamma_tilde = self.params.lr / self.t.mul_add(self.params.lr_decay, 1.);
-                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let current_sum = (sum.as_tensor() + grad.powf(2.)?)?;
                     let change =
                         (gamma_tilde * (grad.div(&(current_sum.powf(0.5)? + self.params.eps)?))?)?;

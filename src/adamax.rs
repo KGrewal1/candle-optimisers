@@ -28,7 +28,7 @@ pub struct ParamsAdaMax {
     pub lr: f64,
     pub beta_1: f64,
     pub beta_2: f64,
-    pub weight_decay: f64,
+    pub weight_decay: Option<f64>,
     pub eps: f64,
 }
 
@@ -38,7 +38,7 @@ impl Default for ParamsAdaMax {
             lr: 1.0,
             beta_1: 0.9,
             beta_2: 0.999,
-            weight_decay: 0.0,
+            weight_decay: None,
             eps: 1e-8,
         }
     }
@@ -75,12 +75,13 @@ impl Optimizer for Adamax {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        if self.params.weight_decay == 0. {
+        if let Some(wd) = self.params.weight_decay {
             for var in &self.vars {
                 let theta = &var.theta;
                 let m = &var.m;
                 let u = &var.u;
                 if let Some(grad) = grads.get(theta) {
+                    let grad = &(grad + (wd * theta.as_tensor())?)?;
                     let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
                     let u_next = (self.params.beta_2 * u.as_tensor())?
@@ -98,7 +99,6 @@ impl Optimizer for Adamax {
                 let m = &var.m;
                 let u = &var.u;
                 if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next =
                         ((self.params.beta_1 * m.as_tensor())? + (1. - self.params.beta_1) * grad)?;
                     let u_next = (self.params.beta_2 * u.as_tensor())?

@@ -54,26 +54,26 @@ pub enum ModelOutcome {
     Converged(Tensor, usize),
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct WeightDecay(f64);
+// #[derive(Clone, Copy, Debug)]
+// pub struct WeightDecay(f64);
 
-#[derive(Clone, Copy, Debug)]
-pub struct DecoupledWeightDecay(f64);
+// #[derive(Clone, Copy, Debug)]
+// pub struct DecoupledWeightDecay(f64);
 
 #[derive(Clone, Copy, Debug)]
 pub enum Decay {
-    WeightDecay(WeightDecay),
-    DecoupledWeightDecay(DecoupledWeightDecay),
+    WeightDecay(f64),
+    DecoupledWeightDecay(f64),
 }
 
-impl From<WeightDecay> for Decay {
-    fn from(wd: WeightDecay) -> Self {
-        Decay::WeightDecay(wd)
-    }
-}
+// impl From<WeightDecay> for Decay {
+//     fn from(wd: WeightDecay) -> Self {
+//         Decay::WeightDecay(wd)
+//     }
+// }
 
-impl From<DecoupledWeightDecay> for Decay {
-    fn from(wd: DecoupledWeightDecay) -> Self {
-        Decay::DecoupledWeightDecay(wd)
-    }
-}
+// impl From<DecoupledWeightDecay> for Decay {
+//     fn from(wd: DecoupledWeightDecay) -> Self {
+//         Decay::DecoupledWeightDecay(wd)
+//     }
+// }

@@ -46,10 +46,10 @@ fn nesterov_sgd_test() -> Result<()> {
 
     let params = ParamsMESGD {
         lr: 0.004,
-        weight_decay: 0.0,
-        momentum: 0.1,
+        weight_decay: None,
+        momentum: optimisers::esgd::Momentum::Nesterov(0.1),
         dampening: 0.0,
-        nesterov: true,
+        // nesterov: true,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
@@ -111,10 +111,10 @@ fn nesterov_decay_sgd_test() -> Result<()> {
 
     let params = ParamsMESGD {
         lr: 0.004,
-        weight_decay: 0.1,
-        momentum: 0.1,
+        weight_decay: Some(0.1),
+        momentum: optimisers::esgd::Momentum::Nesterov(0.1),
         dampening: 0.0,
-        nesterov: true,
+        // nesterov: true,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
@@ -171,10 +171,10 @@ fn momentum_sgd_test() -> Result<()> {
 
     let params = ParamsMESGD {
         lr: 0.004,
-        weight_decay: 0.0,
-        momentum: 0.1,
+        weight_decay: None,
+        momentum: optimisers::esgd::Momentum::Classical(0.1),
         dampening: 0.0,
-        nesterov: false,
+        // nesterov: false,s
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
@@ -231,10 +231,10 @@ fn momentum_sgd_decay_test() -> Result<()> {
 
     let params = ParamsMESGD {
         lr: 0.004,
-        weight_decay: 0.4,
-        momentum: 0.1,
+        weight_decay: Some(0.4),
+        momentum: optimisers::esgd::Momentum::Classical(0.1),
         dampening: 0.0,
-        nesterov: false,
+        // nesterov: false,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
@@ -291,10 +291,10 @@ fn momentum_sgd_dampened_test() -> Result<()> {
 
     let params = ParamsMESGD {
         lr: 0.004,
-        weight_decay: 0.0,
-        momentum: 0.1,
+        weight_decay: None,
+        momentum: optimisers::esgd::Momentum::Classical(0.1),
         dampening: 0.2,
-        nesterov: false,
+        // nesterov: false,
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
     let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;

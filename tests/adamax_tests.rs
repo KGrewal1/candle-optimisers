@@ -106,7 +106,7 @@ fn adamax_weight_decay_test() -> Result<()> {
 
     let params = ParamsAdaMax {
         lr: 0.004,
-        weight_decay: 0.6,
+        weight_decay: Some(0.6),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.

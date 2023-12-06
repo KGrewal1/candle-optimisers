@@ -102,7 +102,7 @@ fn rmsprop_weight_decay_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsRMSprop {
-        weight_decay: 0.4,
+        weight_decay: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -215,7 +215,7 @@ fn rmsprop_centered_decay_test() -> Result<()> {
 
     let params = ParamsRMSprop {
         centered: true,
-        weight_decay: 0.4,
+        weight_decay: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -271,7 +271,7 @@ fn rmsprop_momentum_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsRMSprop {
-        momentum: 0.4,
+        momentum: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -327,8 +327,8 @@ fn rmsprop_momentum_decay_test() -> Result<()> {
     let sample_ys = gen.forward(&sample_xs)?;
 
     let params = ParamsRMSprop {
-        momentum: 0.4,
-        weight_decay: 0.4,
+        momentum: Some(0.4),
+        weight_decay: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -385,7 +385,7 @@ fn rmsprop_centered_momentum_test() -> Result<()> {
 
     let params = ParamsRMSprop {
         centered: true,
-        momentum: 0.4,
+        momentum: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -442,8 +442,8 @@ fn rmsprop_centered_momentum_decay_test() -> Result<()> {
 
     let params = ParamsRMSprop {
         centered: true,
-        momentum: 0.4,
-        weight_decay: 0.4,
+        momentum: Some(0.4),
+        weight_decay: Some(0.4),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
