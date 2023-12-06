@@ -7,6 +7,8 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
+use crate::Decay;
+
 /// R Adam optimiser
 ///
 /// Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
@@ -38,7 +40,7 @@ pub struct ParamsRAdam {
     /// Coefficient for moving average of second moment
     pub beta_2: f64,
     /// Weight decay
-    pub weight_decay: Option<f64>,
+    pub weight_decay: Option<Decay>,
     /// Term added to denominator to improve numerical stability
     pub eps: f64,
 }
@@ -94,31 +96,66 @@ impl Optimizer for RAdam {
                 / (1. - self.params.beta_2.powf(self.t));
 
         if let Some(wd) = self.params.weight_decay {
-            for var in &self.vars {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (wd * theta.as_tensor())?)?;
-                    let m_next = ((self.params.beta_1 * m.as_tensor())?
-                        + ((1. - self.params.beta_1) * grad)?)?;
-                    let v_next = ((self.params.beta_2 * v.as_tensor())?
-                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&m_next / (1. - self.params.beta_1.powf(self.t)))?;
+            match wd {
+                Decay::WeightDecay(wd) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        if let Some(grad) = grads.get(theta) {
+                            let grad = &(grad + (wd * theta.as_tensor())?)?;
+                            let m_next = ((self.params.beta_1 * m.as_tensor())?
+                                + ((1. - self.params.beta_1) * grad)?)?;
+                            let v_next = ((self.params.beta_2 * v.as_tensor())?
+                                + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (&m_next / (1. - self.params.beta_1.powf(self.t)))?;
 
-                    let delta = if rho_t > 5. {
-                        let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
-                            / (&v_next.sqrt()? + self.params.eps)?)?;
-                        let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
-                            / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
-                            .sqrt();
-                        (self.params.lr * r * (l * m_hat)?)?
-                    } else {
-                        (self.params.lr * m_hat)?
-                    };
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
+                            let delta = if rho_t > 5. {
+                                let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                                    / (&v_next.sqrt()? + self.params.eps)?)?;
+                                let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                                    / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                                    .sqrt();
+                                (self.params.lr * r * (l * m_hat)?)?
+                            } else {
+                                (self.params.lr * m_hat)?
+                            };
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                        }
+                    }
+                }
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        if let Some(grad) = grads.get(theta) {
+                            // decoupled weight decay step
+                            theta
+                                .set(&(theta.as_tensor() * self.params.lr.mul_add(-decay, 1.))?)?;
+                            let m_next = ((self.params.beta_1 * m.as_tensor())?
+                                + ((1. - self.params.beta_1) * grad)?)?;
+                            let v_next = ((self.params.beta_2 * v.as_tensor())?
+                                + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (&m_next / (1. - self.params.beta_1.powf(self.t)))?;
+
+                            let delta = if rho_t > 5. {
+                                let l = ((1. - self.params.beta_2.powf(self.t)).sqrt()
+                                    / (&v_next.sqrt()? + self.params.eps)?)?;
+                                let r = ((rho_t - 4.) * (rho_t - 2.) * self.rho_inf
+                                    / ((self.rho_inf - 4.) * (self.rho_inf - 2.) * rho_t))
+                                    .sqrt();
+                                (self.params.lr * r * (l * m_hat)?)?
+                            } else {
+                                (self.params.lr * m_hat)?
+                            };
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                        }
+                    }
                 }
             }
         } else {

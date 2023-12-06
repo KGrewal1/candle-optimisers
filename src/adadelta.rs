@@ -7,6 +7,8 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
+use crate::Decay;
+
 /// Adadelta optimiser
 ///
 /// Described in [ADADELTA: An Adaptive Learning Rate Method](https://arxiv.org/abs/1212.5701)
@@ -36,7 +38,7 @@ pub struct ParamsAdaDelta {
     /// Term added to the denominator to improve numerical stability
     pub eps: f64,
     /// Weight decay
-    pub weight_decay: Option<f64>,
+    pub weight_decay: Option<Decay>,
 }
 
 impl Default for ParamsAdaDelta {
@@ -81,23 +83,49 @@ impl Optimizer for Adadelta {
     }
 
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
-        if let Some(wd) = self.params.weight_decay {
-            for var in &self.vars {
-                let theta = &var.theta;
-                let v = &var.v;
-                let u = &var.u;
-                if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (wd * theta.as_tensor())?)?;
-                    let v_next = ((v.as_tensor() * self.params.rho)?
-                        + (1. - self.params.rho) * grad.powf(2.)?)?;
-                    let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
-                        .div(&((&v_next + self.params.eps)?.powf(0.5)?))?
-                        * grad)?;
-                    let u_next = ((u.as_tensor() * self.params.rho)?
-                        + (1. - self.params.rho) * delta_x.powf(2.)?)?;
-                    theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
-                    v.set(&v_next)?;
-                    u.set(&u_next)?;
+        if let Some(decay) = self.params.weight_decay {
+            match decay {
+                Decay::WeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let v = &var.v;
+                        let u = &var.u;
+                        if let Some(grad) = grads.get(theta) {
+                            let grad = &(grad + (decay * theta.as_tensor())?)?;
+                            let v_next = ((v.as_tensor() * self.params.rho)?
+                                + (1. - self.params.rho) * grad.powf(2.)?)?;
+                            let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
+                                .div(&((&v_next + self.params.eps)?.powf(0.5)?))?
+                                * grad)?;
+                            let u_next = ((u.as_tensor() * self.params.rho)?
+                                + (1. - self.params.rho) * delta_x.powf(2.)?)?;
+                            theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
+                            v.set(&v_next)?;
+                            u.set(&u_next)?;
+                        }
+                    }
+                }
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let v = &var.v;
+                        let u = &var.u;
+                        if let Some(grad) = grads.get(theta) {
+                            // decoupled weight decay step
+                            theta
+                                .set(&(theta.as_tensor() * self.params.lr.mul_add(-decay, 1.))?)?;
+                            let v_next = ((v.as_tensor() * self.params.rho)?
+                                + (1. - self.params.rho) * grad.powf(2.)?)?;
+                            let delta_x = (((u.as_tensor() + self.params.eps)?.powf(0.5)?)
+                                .div(&((&v_next + self.params.eps)?.powf(0.5)?))?
+                                * grad)?;
+                            let u_next = ((u.as_tensor() * self.params.rho)?
+                                + (1. - self.params.rho) * delta_x.powf(2.)?)?;
+                            theta.set(&theta.sub(&(delta_x * self.params.lr)?)?)?;
+                            v.set(&v_next)?;
+                            u.set(&u_next)?;
+                        }
+                    }
                 }
             }
         } else {
