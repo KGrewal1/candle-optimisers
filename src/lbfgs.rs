@@ -49,6 +49,7 @@ pub struct ParamsLBFGS {
     pub line_search: Option<LineSearch>,
     pub grad_conv: GradConv,
     pub step_conv: StepConv,
+    pub weight_decay: Option<f64>,
 }
 
 impl Default for ParamsLBFGS {
@@ -61,6 +62,7 @@ impl Default for ParamsLBFGS {
             line_search: None,
             grad_conv: GradConv::MinForce(1e-7),
             step_conv: StepConv::MinStep(1e-9),
+            weight_decay: None,
         }
     }
 }
@@ -95,7 +97,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     #[allow(clippy::too_many_lines)]
     fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome> {
         let mut evals = 1;
-        let grad = flat_grads(&self.vars, loss)?;
+        let grad = flat_grads(&self.vars, loss, self.params.weight_decay)?;
 
         match self.params.grad_conv {
             GradConv::MinForce(tol) => {
@@ -323,15 +325,28 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
     }
 }
 
-fn flat_grads(vs: &Vec<Var>, loss: &Tensor) -> CResult<Tensor> {
+#[inline(always)]
+fn flat_grads(vs: &Vec<Var>, loss: &Tensor, weight_decay: Option<f64>) -> CResult<Tensor> {
     let grads = loss.backward()?;
     let mut flat_grads = Vec::with_capacity(vs.len());
-    for v in vs {
-        if let Some(grad) = grads.get(v) {
-            flat_grads.push(grad.flatten_all()?);
-        } else {
-            let n_elems = v.elem_count();
-            flat_grads.push(candle_core::Tensor::zeros(n_elems, v.dtype(), v.device())?);
+    if let Some(wd) = weight_decay {
+        for v in vs {
+            if let Some(grad) = grads.get(v) {
+                let grad = &(grad + (wd * v.as_tensor())?)?;
+                flat_grads.push(grad.flatten_all()?);
+            } else {
+                let grad = (wd * v.as_tensor())?; // treat as if grad were 0
+                flat_grads.push(grad.flatten_all()?);
+            }
+        }
+    } else {
+        for v in vs {
+            if let Some(grad) = grads.get(v) {
+                flat_grads.push(grad.flatten_all()?);
+            } else {
+                let n_elems = v.elem_count();
+                flat_grads.push(candle_core::Tensor::zeros(n_elems, v.dtype(), v.device())?);
+            }
         }
     }
     candle_core::Tensor::cat(&flat_grads, 0)
@@ -369,7 +384,7 @@ impl<M: Model> Lbfgs<M> {
 
         add_grad(&mut self.vars, &(mag * direction)?)?;
         let loss = self.model.loss()?;
-        let grad = flat_grads(&self.vars, &loss)?;
+        let grad = flat_grads(&self.vars, &loss, self.params.weight_decay)?;
         set_vs(&mut self.vars, &original)?;
         // add_grad(&mut self.vars, &(-mag * direction)?)?;
         Ok((

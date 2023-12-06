@@ -196,7 +196,7 @@ pub fn run_lbfgs_training<M: SimpleModel + Model>(
 
     let params = ParamsLBFGS {
         lr: 1.,
-        history_size: 10,
+        history_size: 4,
         line_search: Some(LineSearch::StrongWolfe(1e-4, 0.9, 1e-9)),
         ..Default::default()
     };
