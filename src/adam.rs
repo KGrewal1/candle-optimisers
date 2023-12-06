@@ -3,6 +3,8 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
+use crate::Decay;
+
 /// Adam optimiser
 ///
 /// Described in <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>
@@ -71,42 +73,49 @@ impl AdamInner for VecAdamBase {
         grads: &candle_core::backprop::GradStore,
         t: f64,
     ) -> Result<()> {
-        if params.weight_decay == 0. {
-            for var in &self.0 {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                if let Some(grad) = grads.get(theta) {
-                    let m_next =
-                        ((params.beta_1 * m.as_tensor())? + ((1. - params.beta_1) * grad)?)?;
-                    let v_next = ((params.beta_2 * v.as_tensor())?
-                        + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
-                    let v_hat = (&v_next / (1. - params.beta_2.powf(t)))?;
-                    let delta = (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
+        if let Some(decay) = params.weight_decay {
+            match decay {
+                Decay::WeightDecay(decay) => {
+                    for var in &self.0 {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        if let Some(grad) = grads.get(theta) {
+                            let grad = &(grad + (decay * theta.as_tensor())?)?;
+                            let m_next = ((params.beta_1 * m.as_tensor())?
+                                + ((1. - params.beta_1) * grad)?)?;
+                            let v_next = ((params.beta_2 * v.as_tensor())?
+                                + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
+                            let v_hat = (&v_next / (1. - params.beta_2.powf(t)))?;
+                            let delta =
+                                (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                        }
+                    }
                 }
-            }
-        } else if params.decoupled_weight_decay {
-            for var in &self.0 {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                if let Some(grad) = grads.get(theta) {
-                    theta
-                        .set(&(theta.as_tensor() * params.lr.mul_add(-params.weight_decay, 1.))?)?;
-                    let m_next =
-                        ((params.beta_1 * m.as_tensor())? + ((1. - params.beta_1) * grad)?)?;
-                    let v_next = ((params.beta_2 * v.as_tensor())?
-                        + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
-                    let v_hat = (&v_next / (1. - params.beta_2.powf(t)))?;
-                    let delta = (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &self.0 {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        if let Some(grad) = grads.get(theta) {
+                            theta.set(&(theta.as_tensor() * params.lr.mul_add(-decay, 1.))?)?;
+                            let m_next = ((params.beta_1 * m.as_tensor())?
+                                + ((1. - params.beta_1) * grad)?)?;
+                            let v_next = ((params.beta_2 * v.as_tensor())?
+                                + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
+                            let v_hat = (&v_next / (1. - params.beta_2.powf(t)))?;
+                            let delta =
+                                (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                        }
+                    }
                 }
             }
         } else {
@@ -115,7 +124,6 @@ impl AdamInner for VecAdamBase {
                 let m = &var.m;
                 let v = &var.v;
                 if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (params.weight_decay * theta.as_tensor())?)?;
                     let m_next =
                         ((params.beta_1 * m.as_tensor())? + ((1. - params.beta_1) * grad)?)?;
                     let v_next = ((params.beta_2 * v.as_tensor())?
@@ -180,48 +188,55 @@ impl AdamInner for VecAdamAmsgrad {
         grads: &candle_core::backprop::GradStore,
         t: f64,
     ) -> Result<()> {
-        if params.weight_decay == 0. {
-            for var in &self.0 {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                let vmax = &var.vmax;
-                if let Some(grad) = grads.get(theta) {
-                    let m_next =
-                        ((params.beta_1 * m.as_tensor())? + ((1. - params.beta_1) * grad)?)?;
-                    let v_next = ((params.beta_2 * v.as_tensor())?
-                        + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
-                    let vmax_next = vmax.maximum(&v_next)?;
-                    let v_hat = (&vmax_next / (1. - params.beta_2.powf(t)))?;
-                    let delta = (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
-                    vmax.set(&vmax_next)?;
+        if let Some(decay) = params.weight_decay {
+            match decay {
+                Decay::WeightDecay(decay) => {
+                    for var in &self.0 {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        let vmax = &var.vmax;
+                        if let Some(grad) = grads.get(theta) {
+                            let grad = &(grad + (decay * theta.as_tensor())?)?;
+                            let m_next = ((params.beta_1 * m.as_tensor())?
+                                + ((1. - params.beta_1) * grad)?)?;
+                            let v_next = ((params.beta_2 * v.as_tensor())?
+                                + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
+                            let vmax_next = vmax.maximum(&v_next)?;
+                            let v_hat = (&vmax_next / (1. - params.beta_2.powf(t)))?;
+                            let delta =
+                                (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                            vmax.set(&vmax_next)?;
+                        }
+                    }
                 }
-            }
-        } else if params.decoupled_weight_decay {
-            for var in &self.0 {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                let vmax = &var.vmax;
-                if let Some(grad) = grads.get(theta) {
-                    theta
-                        .set(&(theta.as_tensor() * params.lr.mul_add(-params.weight_decay, 1.))?)?;
-                    let m_next =
-                        ((params.beta_1 * m.as_tensor())? + ((1. - params.beta_1) * grad)?)?;
-                    let v_next = ((params.beta_2 * v.as_tensor())?
-                        + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
-                    let vmax_next = vmax.maximum(&v_next)?;
-                    let v_hat = (&vmax_next / (1. - params.beta_2.powf(t)))?;
-                    let delta = (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
-                    vmax.set(&vmax_next)?;
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &self.0 {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        let vmax = &var.vmax;
+                        if let Some(grad) = grads.get(theta) {
+                            theta.set(&(theta.as_tensor() * params.lr.mul_add(-decay, 1.))?)?;
+                            let m_next = ((params.beta_1 * m.as_tensor())?
+                                + ((1. - params.beta_1) * grad)?)?;
+                            let v_next = ((params.beta_2 * v.as_tensor())?
+                                + ((1. - params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (&m_next / (1. - (params.beta_1).powf(t)))?;
+                            let vmax_next = vmax.maximum(&v_next)?;
+                            let v_hat = (&vmax_next / (1. - params.beta_2.powf(t)))?;
+                            let delta =
+                                (m_hat * params.lr)?.div(&(v_hat.powf(0.5)? + params.eps)?)?;
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                            vmax.set(&vmax_next)?;
+                        }
+                    }
                 }
             }
         } else {
@@ -231,7 +246,6 @@ impl AdamInner for VecAdamAmsgrad {
                 let v = &var.v;
                 let vmax = &var.vmax;
                 if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (params.weight_decay * theta.as_tensor())?)?;
                     let m_next =
                         ((params.beta_1 * m.as_tensor())? + ((1. - params.beta_1) * grad)?)?;
                     let v_next = ((params.beta_2 * v.as_tensor())?
@@ -264,9 +278,9 @@ pub struct ParamsAdam {
     pub beta_1: f64,
     pub beta_2: f64,
     pub eps: f64,
-    pub weight_decay: f64,
+    pub weight_decay: Option<Decay>,
     pub amsgrad: bool,
-    pub decoupled_weight_decay: bool,
+    // pub decoupled_weight_decay: bool,
 }
 
 impl Default for ParamsAdam {
@@ -276,9 +290,9 @@ impl Default for ParamsAdam {
             beta_1: 0.9,
             beta_2: 0.999,
             eps: 1e-8,
-            weight_decay: 0.0,
+            weight_decay: None,
             amsgrad: false,
-            decoupled_weight_decay: false,
+            // decoupled_weight_decay: false,
         }
     }
 }

@@ -66,6 +66,14 @@ pub enum Decay {
     DecoupledWeightDecay(f64),
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Momentum {
+    /// classical momentum
+    Classical(f64),
+    /// nesterov momentum
+    Nesterov(f64),
+}
+
 // impl From<WeightDecay> for Decay {
 //     fn from(wd: WeightDecay) -> Self {
 //         Decay::WeightDecay(wd)

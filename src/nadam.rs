@@ -3,6 +3,8 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
+use crate::Decay;
+
 /// Adam optimiser with Nesterov momentum
 ///
 /// Described in <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>
@@ -33,9 +35,8 @@ pub struct ParamsNAdam {
     pub beta_1: f64,
     pub beta_2: f64,
     pub eps: f64,
-    pub weight_decay: f64,
+    pub weight_decay: Option<Decay>,
     pub momentum_decay: f64,
-    pub decoupled_weight_decay: bool,
 }
 
 impl Default for ParamsNAdam {
@@ -45,9 +46,8 @@ impl Default for ParamsNAdam {
             beta_1: 0.9,
             beta_2: 0.999,
             eps: 1e-8,
-            weight_decay: 0.0,
+            weight_decay: None,
             momentum_decay: 0.004,
-            decoupled_weight_decay: false,
         }
     }
 }
@@ -102,48 +102,53 @@ impl Optimizer for NAdam {
         self.prod = prod;
         self.prod2 = prod2;
         // println!("prod {}", prod);
-        if self.params.weight_decay == 0. {
-            for var in &self.vars {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                if let Some(grad) = grads.get(theta) {
-                    let m_next = ((self.params.beta_1 * m.as_tensor())?
-                        + ((1. - self.params.beta_1) * grad)?)?;
-                    let v_next = ((self.params.beta_2 * v.as_tensor())?
-                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (((mu_t2 / (1. - prod2)) * &m_next)?
-                        + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                    let v_hat = (&v_next / (1. - self.params.beta_2.powf(self.t)))?;
-                    let delta =
-                        (m_hat * self.params.lr)?.div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
+
+        if let Some(decay) = self.params.weight_decay {
+            match decay {
+                Decay::WeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        if let Some(grad) = grads.get(theta) {
+                            let grad = &(grad + (decay * theta.as_tensor())?)?;
+                            let m_next = ((self.params.beta_1 * m.as_tensor())?
+                                + ((1. - self.params.beta_1) * grad)?)?;
+                            let v_next = ((self.params.beta_2 * v.as_tensor())?
+                                + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (((mu_t2 / (1. - prod2)) * &m_next)?
+                                + (((1. - mu_t) / (1. - prod)) * grad)?)?;
+                            let v_hat = (&v_next / (1. - self.params.beta_2.powf(self.t)))?;
+                            let delta = (m_hat * self.params.lr)?
+                                .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                        }
+                    }
                 }
-            }
-        } else if self.params.decoupled_weight_decay {
-            for var in &self.vars {
-                let theta = &var.theta;
-                let m = &var.m;
-                let v = &var.v;
-                if let Some(grad) = grads.get(theta) {
-                    theta.set(
-                        &(theta.as_tensor()
-                            * self.params.lr.mul_add(-self.params.weight_decay, 1.))?,
-                    )?;
-                    let m_next = ((self.params.beta_1 * m.as_tensor())?
-                        + ((1. - self.params.beta_1) * grad)?)?;
-                    let v_next = ((self.params.beta_2 * v.as_tensor())?
-                        + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
-                    let m_hat = (((mu_t2 / (1. - prod2)) * &m_next)?
-                        + (((1. - mu_t) / (1. - prod)) * grad)?)?;
-                    let v_hat = (&v_next / (1. - self.params.beta_2.powf(self.t)))?;
-                    let delta =
-                        (m_hat * self.params.lr)?.div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
-                    theta.set(&theta.sub(&(delta))?)?;
-                    m.set(&m_next)?;
-                    v.set(&v_next)?;
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &self.vars {
+                        let theta = &var.theta;
+                        let m = &var.m;
+                        let v = &var.v;
+                        if let Some(grad) = grads.get(theta) {
+                            theta
+                                .set(&(theta.as_tensor() * self.params.lr.mul_add(-decay, 1.))?)?;
+                            let m_next = ((self.params.beta_1 * m.as_tensor())?
+                                + ((1. - self.params.beta_1) * grad)?)?;
+                            let v_next = ((self.params.beta_2 * v.as_tensor())?
+                                + ((1. - self.params.beta_2) * grad.powf(2.)?)?)?;
+                            let m_hat = (((mu_t2 / (1. - prod2)) * &m_next)?
+                                + (((1. - mu_t) / (1. - prod)) * grad)?)?;
+                            let v_hat = (&v_next / (1. - self.params.beta_2.powf(self.t)))?;
+                            let delta = (m_hat * self.params.lr)?
+                                .div(&(v_hat.powf(0.5)? + self.params.eps)?)?;
+                            theta.set(&theta.sub(&(delta))?)?;
+                            m.set(&m_next)?;
+                            v.set(&v_next)?;
+                        }
+                    }
                 }
             }
         } else {
@@ -152,7 +157,6 @@ impl Optimizer for NAdam {
                 let m = &var.m;
                 let v = &var.v;
                 if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (self.params.weight_decay * theta.as_tensor())?)?;
                     let m_next = ((self.params.beta_1 * m.as_tensor())?
                         + ((1. - self.params.beta_1) * grad)?)?;
                     let v_next = ((self.params.beta_2 * v.as_tensor())?

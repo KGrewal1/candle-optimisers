@@ -9,7 +9,10 @@ use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 use anyhow::Result;
 use candle_core::{Device, Tensor, Var};
 use candle_nn::{Linear, Module, Optimizer};
-use optimisers::esgd::{MomentumEnhancedSGD, ParamsMESGD};
+use optimisers::{
+    esgd::{MomentumEnhancedSGD, ParamsMESGD},
+    Momentum,
+};
 
 /* The results of this test have been checked against the following PyTorch code.
     import torch
@@ -47,7 +50,7 @@ fn nesterov_sgd_test() -> Result<()> {
     let params = ParamsMESGD {
         lr: 0.004,
         weight_decay: None,
-        momentum: optimisers::esgd::Momentum::Nesterov(0.1),
+        momentum: Momentum::Nesterov(0.1),
         dampening: 0.0,
         // nesterov: true,
     };
@@ -112,7 +115,7 @@ fn nesterov_decay_sgd_test() -> Result<()> {
     let params = ParamsMESGD {
         lr: 0.004,
         weight_decay: Some(0.1),
-        momentum: optimisers::esgd::Momentum::Nesterov(0.1),
+        momentum: Momentum::Nesterov(0.1),
         dampening: 0.0,
         // nesterov: true,
     };
@@ -172,7 +175,7 @@ fn momentum_sgd_test() -> Result<()> {
     let params = ParamsMESGD {
         lr: 0.004,
         weight_decay: None,
-        momentum: optimisers::esgd::Momentum::Classical(0.1),
+        momentum: Momentum::Classical(0.1),
         dampening: 0.0,
         // nesterov: false,s
     };
@@ -232,7 +235,7 @@ fn momentum_sgd_decay_test() -> Result<()> {
     let params = ParamsMESGD {
         lr: 0.004,
         weight_decay: Some(0.4),
-        momentum: optimisers::esgd::Momentum::Classical(0.1),
+        momentum: Momentum::Classical(0.1),
         dampening: 0.0,
         // nesterov: false,
     };
@@ -292,7 +295,7 @@ fn momentum_sgd_dampened_test() -> Result<()> {
     let params = ParamsMESGD {
         lr: 0.004,
         weight_decay: None,
-        momentum: optimisers::esgd::Momentum::Classical(0.1),
+        momentum: Momentum::Classical(0.1),
         dampening: 0.2,
         // nesterov: false,
     };

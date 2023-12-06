@@ -3,6 +3,8 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
+use crate::Momentum;
+
 /// Optimizer for Stochastic Gradient Descent with momentum.
 ///
 /// Utilised same interface as pytorch but allows negative momenta and dampening with Nesterov
@@ -19,14 +21,6 @@ pub struct MomentumEnhancedSGD {
 struct VarMESGD {
     theta: Var,
     b: Option<Var>,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Momentum {
-    /// classical momentum
-    Classical(f64),
-    /// nesterov momentum
-    Nesterov(f64),
 }
 
 #[derive(Debug)]
