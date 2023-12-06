@@ -1,6 +1,8 @@
 //! Optimisers for use with the candle framework for lightweight machine learning.
 //! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
 
+use std::fmt::Debug;
+
 use candle_core::Result as CResult;
 use candle_core::Tensor;
 use candle_core::Var;
@@ -50,4 +52,28 @@ pub enum ModelOutcome {
     /// The model has converged and the loss has not changed
     /// contains loss and the number of func evals
     Converged(Tensor, usize),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct WeightDecay(f64);
+
+#[derive(Clone, Copy, Debug)]
+pub struct DecoupledWeightDecay(f64);
+
+#[derive(Clone, Copy, Debug)]
+pub enum Decay {
+    WeightDecay(WeightDecay),
+    DecoupledWeightDecay(DecoupledWeightDecay),
+}
+
+impl From<WeightDecay> for Decay {
+    fn from(wd: WeightDecay) -> Self {
+        Decay::WeightDecay(wd)
+    }
+}
+
+impl From<DecoupledWeightDecay> for Decay {
+    fn from(wd: DecoupledWeightDecay) -> Self {
+        Decay::DecoupledWeightDecay(wd)
+    }
 }
