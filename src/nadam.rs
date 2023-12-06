@@ -1,4 +1,4 @@
-//! The N Adam optimiser: Adam with Nesterov momentum
+//! The NAdam optimiser: Adam with Nesterov momentum
 //!
 //! Described in [Incorporating Nesterov Momentum into Adam](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
 //!
@@ -33,7 +33,7 @@ struct VarNAdam {
     v: Var,
 }
 
-/// Parameters for The N Adam optimiser
+/// Parameters for The NAdam optimiser
 #[derive(Debug)]
 pub struct ParamsNAdam {
     /// Learning rate

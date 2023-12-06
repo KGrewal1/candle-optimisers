@@ -16,7 +16,7 @@ pub mod nadam;
 pub mod radam;
 pub mod rmsprop;
 
-/// trait for Models: this will be needed for optimisers that require the ability to calculate the loss
+/// Trait for Models: this is needed for optimisers that require the ability to calculate the loss
 /// such as LBFGS
 ///
 /// This is largely the same as the trait defined in the MNIST example in the main candle repo

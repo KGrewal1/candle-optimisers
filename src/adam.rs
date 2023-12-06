@@ -1,6 +1,6 @@
 //! Adam optimiser
 //!
-//! This includes Adam W via use of decoupled weight decay
+//! This includes AdamW via use of decoupled weight decay
 //!
 //! Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
 //! and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
@@ -17,7 +17,7 @@ use crate::Decay;
 
 /// Adam optimiser
 ///
-/// This includes Adam W via use of decoupled weight decay
+/// This includes AdamW via use of decoupled weight decay
 ///
 /// Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
 /// and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)

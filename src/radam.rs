@@ -1,4 +1,4 @@
-//! The R Adam optimiser
+//! The RAdam optimiser
 //!
 //! Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
 //!
@@ -28,7 +28,7 @@ struct VarRAdam {
     v: Var,
 }
 
-/// Parameters for the R Adam optimiser
+/// Parameters for the RAdam optimiser
 #[derive(Debug)]
 pub struct ParamsRAdam {
     /// Learning rate

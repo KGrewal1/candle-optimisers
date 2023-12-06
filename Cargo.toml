@@ -50,3 +50,4 @@ missing_errors_doc = {level =  "allow", priority = 1}
 uninlined_format_args = {level =  "allow", priority = 1}
 similar_names = {level =  "allow", priority = 1}
 float_cmp = {level =  "allow", priority = 1} # as internaly rounded before the comparison
+doc_markdown= {level =  "allow", priority = 1} # otherwise names get flagged
