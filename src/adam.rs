@@ -52,18 +52,6 @@ use candle_nn::optim::Optimizer;
 
 use crate::Decay;
 
-/// Adam optimiser
-///
-/// This includes AdamW via use of decoupled weight decay
-///
-/// Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
-/// and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
-///
-/// The AMSGrad variant is also implemented, described in [On the Convergence of Adam and Beyond](https://openreview.net/forum?id=ryQu7f-RZ)
-///
-/// For pseudocode see <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam> and
-/// <https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html#torch.optim.AdamW>
-
 trait AdamInner {
     fn new(vars: Vec<Var>) -> Result<Self>
     where
@@ -77,6 +65,14 @@ trait AdamInner {
     ) -> Result<()>;
 }
 
+/// Adam optimiser
+///
+/// This includes AdamW via use of decoupled weight decay
+///
+/// Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
+/// and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
+///
+/// The AMSGrad variant is also implemented, described in [On the Convergence of Adam and Beyond](https://openreview.net/forum?id=ryQu7f-RZ)
 #[derive(Debug)]
 pub struct Adam {
     vars: VarAdam,

@@ -20,26 +20,27 @@ pub mod rmsprop;
 
 /// Trait for Models: this is needed for optimisers that require the ability to calculate the loss
 /// such as LBFGS
-///
-/// This is largely the same as the trait defined in the MNIST example in the main candle repo
 pub trait Model: Sized {
-    // initialise
-    // fn new(vs: VarBuilder) -> CResult<Self>;
-    // // forward pass through network
-    // fn forward(&self, xs: &Tensor) -> CResult<Tensor>;
-    // pass comparing to actual to get loss
+    /// get the loss of the model
     fn loss(&self) -> CResult<Tensor>; //, xs: &Tensor, ys: &Tensor
 }
 
 /// trait for optimisers like LBFGS that need the ability to calculate the loss
 /// and its gradient
 pub trait LossOptimizer<M: Model>: Sized {
+    /// type of the optimiser configuration
     type Config: Sized;
+    /// create a new optimiser from a Vec of variables, setup parameters and a model
     fn new(vs: Vec<Var>, params: Self::Config, model: M) -> CResult<Self>;
+    /// take a step of the optimiser
     fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome>; //, xs: &Tensor, ys: &Tensor
+    /// get the current learning rate
     fn learning_rate(&self) -> f64;
+    /// set the learning rate
     fn set_learning_rate(&mut self, lr: f64);
+    /// get the a vec of the variables being optimised
     fn into_inner(self) -> Vec<Var>;
+    /// create a new optimiser from a slice of variables, setup parameters and a model
     fn from_slice(vars: &[&Var], config: Self::Config, model: M) -> CResult<Self> {
         let vars: Vec<_> = vars.iter().map(|&v| v.clone()).collect();
         Self::new(vars, config, model)
