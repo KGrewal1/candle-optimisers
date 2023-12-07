@@ -1,5 +1,5 @@
 /*!
-Adam optimiser
+Adam optimiser (inlcuding AdamW)
 
 This includes AdamW via use of decoupled weight decay
 
