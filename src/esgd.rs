@@ -99,6 +99,7 @@ impl Optimizer for SGD {
         self.params.lr
     }
 
+    #[allow(clippy::too_many_lines)]
     fn step(&mut self, grads: &candle_core::backprop::GradStore) -> Result<()> {
         if let Some(momentum) = self.params.momentum {
             match momentum {
