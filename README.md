@@ -58,7 +58,7 @@ to use the cuda backend.
 ## Usage
 
 ```cli
-cargo add --git https://github.com/KGrewal1/optimisers.git optimisers
+cargo add --git https://github.com/KGrewal1/optimisers.git candle-optimisers
 ```
 
 ## To do
