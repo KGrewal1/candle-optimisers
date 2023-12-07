@@ -24,7 +24,7 @@ $$
     &\\hspace{10mm}\\textbf{else}                                                              \\\\
     &\\hspace{15mm} b_t \\leftarrow g_{t}                                    \\\\
      &\\hspace{10mm}\\textbf{if} \\: \\textit{nesterov}                       \\\\
-    &\\hspace{15mm} g_t \\leftarrow gt + \\mu b_t                   \\\\
+    &\\hspace{15mm} g_t \\leftarrow g_t + \\mu b_t                   \\\\
     &\\hspace{10mm}\\textbf{else}                                                              \\\\
     &\\hspace{15mm} g_t \\leftarrow b_t                           \\\\
     &\\hspace{5mm}\\theta_t \\leftarrow \\theta_{t-1} - \\gamma g_t \\\\

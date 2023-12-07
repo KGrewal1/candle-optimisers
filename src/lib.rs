@@ -60,9 +60,21 @@ pub enum ModelOutcome {
 /// Method of weight decay to use
 #[derive(Clone, Copy, Debug)]
 pub enum Decay {
-    /// weight decay regularisation to penalise large weights
+    /// Weight decay regularisation to penalise large weights
+    ///
+    /// The gradient is transformed as
+    /// $$ g_{t} \\gets g_{t} + + \\lambda  \\theta_{t-1}$$
+    ///
+    /// This is equivalent to an L2 regularisation term in the loss adding $\\frac{\\lambda}{2}||\theta||_{2}^{2}$ but avoids autodifferentiation
+    /// of the L2 term
     WeightDecay(f64),
-    /// Decoupled weight decay as described in <https://arxiv.org/abs/1711.05101>
+    /// Decoupled weight decay as described in [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
+    ///
+    /// This directly decays the weights as
+    ///
+    /// $$ \\theta_{t} \\gets (1 - \\eta \\lambda) \\theta_{t-1}$$
+    ///
+    /// This is equivalent to regularisation, only for SGD without momentum, but is different for adaptive gradient methods
     DecoupledWeightDecay(f64),
 }
 
