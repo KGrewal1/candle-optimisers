@@ -8,6 +8,10 @@ keywords = ["optimisers", "candle", "tensor", "machine-learning"]
 categories = ["science", "machine-learning", "optimisation"]
 description = "Optimisers for use with candle, the minimalist ML framework"
 repository = "https://github.com/KGrewal1/optimisers"
+exclude = [
+    "*.ipynb"
+]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
