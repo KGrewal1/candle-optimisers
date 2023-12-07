@@ -1,13 +1,15 @@
 use candle_core::{Result, Tensor, Var};
 use candle_nn::Optimizer;
-use optimisers::adadelta::{Adadelta, ParamsAdaDelta};
-use optimisers::adagrad::{Adagrad, ParamsAdaGrad};
-use optimisers::adam::{Adam, ParamsAdam};
-use optimisers::adamax::{Adamax, ParamsAdaMax};
-use optimisers::esgd::{ParamsSGD, SGD};
-use optimisers::nadam::{NAdam, ParamsNAdam};
-use optimisers::radam::{ParamsRAdam, RAdam};
-use optimisers::rmsprop::{ParamsRMSprop, RMSprop};
+use candle_optimisers::{
+    adadelta::{Adadelta, ParamsAdaDelta},
+    adagrad::{Adagrad, ParamsAdaGrad},
+    adam::{Adam, ParamsAdam},
+    adamax::{Adamax, ParamsAdaMax},
+    esgd::{ParamsSGD, SGD},
+    nadam::{NAdam, ParamsNAdam},
+    radam::{ParamsRAdam, RAdam},
+    rmsprop::{ParamsRMSprop, RMSprop},
+};
 
 pub trait Optim: Sized {
     fn new(vars: Vec<Var>, lr: f64) -> Result<Self>;

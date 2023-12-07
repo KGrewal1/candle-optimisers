@@ -9,9 +9,9 @@ use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 use anyhow::Result;
 use candle_core::{Device, Tensor, Var};
 use candle_nn::{Linear, Module, Optimizer};
-use optimisers::{
+use candle_optimisers::{
     esgd::{ParamsSGD, SGD},
-    Momentum,
+    Decay, Momentum,
 };
 
 /* The results of this test have been checked against the following PyTorch code.
@@ -114,7 +114,7 @@ fn nesterov_decay_sgd_test() -> Result<()> {
 
     let params = ParamsSGD {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::WeightDecay(0.1)),
+        weight_decay: Some(Decay::WeightDecay(0.1)),
         momentum: Some(Momentum::Nesterov(0.1)),
         dampening: 0.0,
         // nesterov: true,
@@ -234,7 +234,7 @@ fn momentum_sgd_decay_test() -> Result<()> {
 
     let params = ParamsSGD {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::WeightDecay(0.4)),
+        weight_decay: Some(Decay::WeightDecay(0.4)),
         momentum: Some(Momentum::Classical(0.1)),
         dampening: 0.0,
         // nesterov: false,
@@ -358,7 +358,7 @@ fn sgd_decay_test() -> Result<()> {
 
     let params = ParamsSGD {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::WeightDecay(0.4)),
+        weight_decay: Some(Decay::WeightDecay(0.4)),
         momentum: None,
         dampening: 0.0,
         // nesterov: false,
@@ -394,7 +394,7 @@ fn sgdw_decay_test() -> Result<()> {
 
     let params = ParamsSGD {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::DecoupledWeightDecay(0.4)),
+        weight_decay: Some(Decay::DecoupledWeightDecay(0.4)),
         momentum: None,
         dampening: 0.0,
         // nesterov: false,
@@ -426,7 +426,7 @@ fn momentum_sgdw_decay_test() -> Result<()> {
 
     let params = ParamsSGD {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::DecoupledWeightDecay(0.4)),
+        weight_decay: Some(Decay::DecoupledWeightDecay(0.4)),
         momentum: Some(Momentum::Classical(0.1)),
         dampening: 0.0,
         // nesterov: false,
@@ -458,7 +458,7 @@ fn nesterov_decay_sgdw_test() -> Result<()> {
 
     let params = ParamsSGD {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::DecoupledWeightDecay(0.1)),
+        weight_decay: Some(candle_optimisers::Decay::DecoupledWeightDecay(0.1)),
         momentum: Some(Momentum::Nesterov(0.1)),
         dampening: 0.0,
         // nesterov: true,

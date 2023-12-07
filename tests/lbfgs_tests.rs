@@ -9,8 +9,8 @@ extern crate accelerate_src;
 use anyhow::Result;
 use candle_core::test_utils::to_vec2_round;
 use candle_core::{DType, Device, Result as CResult, Tensor};
-use optimisers::lbfgs::{GradConv, Lbfgs, LineSearch, ParamsLBFGS, StepConv};
-use optimisers::{LossOptimizer, Model};
+use candle_optimisers::lbfgs::{GradConv, Lbfgs, LineSearch, ParamsLBFGS, StepConv};
+use candle_optimisers::{LossOptimizer, Model, ModelOutcome};
 
 /*
 These tests all use the 2D Rosenbrock function as a test function for the optimisers. This has minimum 0 at (1, 1)
@@ -70,8 +70,8 @@ fn lbfgs_test() -> Result<()> {
         let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
                                                // println!("end step {}", _step);
         match res {
-            optimisers::ModelOutcome::Converged(_, _) => break,
-            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            ModelOutcome::Converged(_, _) => break,
+            ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
             // _ => panic!("unexpected outcome"),
         }
     }
@@ -108,8 +108,8 @@ fn lbfgs_test_strong_wolfe() -> Result<()> {
         let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
                                                // println!("end step {}", _step);
         match res {
-            optimisers::ModelOutcome::Converged(_, _) => break,
-            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            ModelOutcome::Converged(_, _) => break,
+            ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
             // _ => panic!("unexpected outcome"),
         }
     }
@@ -146,8 +146,8 @@ fn lbfgs_rms_grad_test() -> Result<()> {
         let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
                                                // println!("end step {}", _step);
         match res {
-            optimisers::ModelOutcome::Converged(_, _) => break,
-            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            ModelOutcome::Converged(_, _) => break,
+            ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
             // _ => panic!("unexpected outcome"),
         }
     }
@@ -185,8 +185,8 @@ fn lbfgs_rms_step_test() -> Result<()> {
         let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
                                                // println!("end step {}", _step);
         match res {
-            optimisers::ModelOutcome::Converged(_, _) => break,
-            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            ModelOutcome::Converged(_, _) => break,
+            ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
             // _ => panic!("unexpected outcome"),
         }
     }
@@ -224,8 +224,8 @@ fn lbfgs_test_strong_wolfe_weight_decay() -> Result<()> {
         let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
                                                // println!("end step {}", _step);
         match res {
-            optimisers::ModelOutcome::Converged(_, _) => break,
-            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            ModelOutcome::Converged(_, _) => break,
+            ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
             // _ => panic!("unexpected outcome"),
         }
     }

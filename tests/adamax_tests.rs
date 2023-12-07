@@ -9,7 +9,7 @@ use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 use anyhow::Result;
 use candle_core::{Device, Tensor, Var};
 use candle_nn::{Linear, Module, Optimizer};
-use optimisers::adamax::{Adamax, ParamsAdaMax};
+use candle_optimisers::adamax::{Adamax, ParamsAdaMax};
 
 /* The results of this test have been checked against the following PyTorch code.
     import torch
@@ -106,7 +106,7 @@ fn adamax_weight_decay_test() -> Result<()> {
 
     let params = ParamsAdaMax {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::WeightDecay(0.6)),
+        weight_decay: Some(candle_optimisers::Decay::WeightDecay(0.6)),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.
@@ -139,7 +139,7 @@ fn adamax_decoupled_weight_decay_test() -> Result<()> {
 
     let params = ParamsAdaMax {
         lr: 0.004,
-        weight_decay: Some(optimisers::Decay::DecoupledWeightDecay(0.6)),
+        weight_decay: Some(candle_optimisers::Decay::DecoupledWeightDecay(0.6)),
         ..Default::default()
     };
     // Now use backprop to run a linear regression between samples and get the coefficients back.

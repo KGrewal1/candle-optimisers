@@ -9,7 +9,7 @@ use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 use anyhow::Result;
 use candle_core::{Device, Tensor, Var};
 use candle_nn::{Linear, Module, Optimizer};
-use optimisers::adagrad::{Adagrad, ParamsAdaGrad};
+use candle_optimisers::adagrad::{Adagrad, ParamsAdaGrad};
 
 /* The results of this test have been checked against the following PyTorch code.
     import torch
@@ -169,7 +169,7 @@ fn adagrad_weight_decay_test() -> Result<()> {
     let params = ParamsAdaGrad {
         lr: 0.004,
         lr_decay: 0.0,
-        weight_decay: Some(optimisers::Decay::WeightDecay(0.2)),
+        weight_decay: Some(candle_optimisers::Decay::WeightDecay(0.2)),
         initial_acc: 0.0,
         eps: 1e-10,
     };
@@ -204,7 +204,7 @@ fn adagrad_decoupled_weight_decay_test() -> Result<()> {
     let params = ParamsAdaGrad {
         lr: 0.004,
         lr_decay: 0.0,
-        weight_decay: Some(optimisers::Decay::DecoupledWeightDecay(0.2)),
+        weight_decay: Some(candle_optimisers::Decay::DecoupledWeightDecay(0.2)),
         initial_acc: 0.0,
         eps: 1e-10,
     };

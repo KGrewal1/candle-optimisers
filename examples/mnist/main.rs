@@ -7,13 +7,13 @@ mod training;
 
 use models::{LinearModel, Mlp};
 
-use optimisers::adagrad::Adagrad;
-use optimisers::adamax::Adamax;
-use optimisers::esgd::SGD;
-use optimisers::nadam::NAdam;
-use optimisers::radam::RAdam;
-use optimisers::rmsprop::RMSprop;
-use optimisers::{adadelta::Adadelta, adam::Adam};
+use candle_optimisers::adagrad::Adagrad;
+use candle_optimisers::adamax::Adamax;
+use candle_optimisers::esgd::SGD;
+use candle_optimisers::nadam::NAdam;
+use candle_optimisers::radam::RAdam;
+use candle_optimisers::rmsprop::RMSprop;
+use candle_optimisers::{adadelta::Adadelta, adam::Adam};
 
 use parse_cli::{Args, TrainingArgs, WhichModel, WhichOptim};
 use training::training_loop;

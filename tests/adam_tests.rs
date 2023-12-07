@@ -9,7 +9,7 @@ use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 use anyhow::Result;
 use candle_core::{Device, Tensor, Var};
 use candle_nn::{Linear, Module, Optimizer};
-use optimisers::{
+use candle_optimisers::{
     adam::{Adam, ParamsAdam},
     Decay,
 };
