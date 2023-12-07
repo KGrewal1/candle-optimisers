@@ -1,4 +1,4 @@
-//! LBFGS optimiser
+//! Limited memory Broyden–Fletcher–Goldfarb–Shanno algorithm
 //!
 //! A pseudo second order optimiser based on the BFGS method.
 //!

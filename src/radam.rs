@@ -1,5 +1,5 @@
 /*!
-RAdam optimiser: Adam with Nesterov momentum
+RAdam optimiser
 
 Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
 
