@@ -4,6 +4,8 @@
 [![codecov](https://codecov.io/gh/KGrewal1/optimisers/graph/badge.svg?token=6AFTLS6DFO)](https://codecov.io/gh/KGrewal1/optimisers)
 ![Tests](https://github.com/KGrewal1/optimisers/actions/workflows/rust-ci.yml/badge.svg)
 ![Tests](https://github.com/KGrewal1/optimisers/actions/workflows/lints.yml/badge.svg)
+[![Latest version](https://img.shields.io/crates/v/candle-optimisers.svg)](https://crates.io/crates/candle-optimisers)
+[![Documentation](https://docs.rs/candle-optimisers/badge.svg)](https://docs.rs/candle-optimisers)
 
 A crate for optimisers for use with [candle](https://github.com/huggingface/candle), the minimalist ML framework
 
