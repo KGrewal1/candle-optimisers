@@ -184,6 +184,7 @@ impl Optimizer for Adadelta {
 }
 
 impl Adadelta {
+    /// Return the vars being optimised
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
         self.vars.into_iter().map(|v| v.theta).collect()

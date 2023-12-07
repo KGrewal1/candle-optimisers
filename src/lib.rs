@@ -63,7 +63,7 @@ pub enum Decay {
     /// Weight decay regularisation to penalise large weights
     ///
     /// The gradient is transformed as
-    /// $$ g_{t} \\gets g_{t} + + \\lambda  \\theta_{t-1}$$
+    /// $$ g_{t} \\gets g_{t} + \\lambda  \\theta_{t-1}$$
     ///
     /// This is equivalent to an L2 regularisation term in the loss adding $\\frac{\\lambda}{2}||\theta||_{2}^{2}$ but avoids autodifferentiation
     /// of the L2 term

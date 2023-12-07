@@ -15,14 +15,25 @@ use std::collections::VecDeque;
 
 mod strong_wolfe;
 
+/// Line search method
+/// Only Strong Wolfe is currently implemented
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum LineSearch {
     /// strong wolfe line search: c1, c2, tolerance
-    /// suggested vals for c1 and c2: 1e-4, 0.9
+    /// suggested vals for c1 and c2: 1e-4, 0.9, for tolerance 1e-9
+    ///
+    /// Ensures the Strong Wolfe conditions are met for step size $t$ in direction $\bm{d}$:
+    ///
+    /// $$ f(x + t \bm{d}) \leq f(x) + c_1 t \bm{d}^T \nabla f(x)  $$
+    ///
+    /// and
+    ///
+    /// $$ |\bm{d}^{T} \nabla f(x + t \bm{d})| \leq c_{2} |\bm{d}^{T} \nabla f(x)| $$
     StrongWolfe(f64, f64, f64),
 }
 
+/// Conditions for terminsation based on gradient
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum GradConv {
@@ -32,6 +43,7 @@ pub enum GradConv {
     RMSForce(f64),
 }
 
+/// Conditions for termination based on step size
 #[derive(Clone, Copy, Debug)]
 #[non_exhaustive]
 pub enum StepConv {

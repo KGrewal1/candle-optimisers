@@ -517,6 +517,7 @@ impl Optimizer for RMSprop {
 }
 
 impl RMSprop {
+    /// Return the vars being optimised
     #[must_use]
     pub fn into_inner(self) -> Vec<Var> {
         match self.vars {
