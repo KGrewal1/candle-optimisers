@@ -3,7 +3,7 @@
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-use crate::Momentum;
+use crate::{Decay, Momentum};
 
 /// Optimizer for Stochastic Gradient Descent with momentum.
 ///
@@ -29,7 +29,7 @@ pub struct ParamsSGD {
     /// Learning rate
     pub lr: f64,
     /// Weight decay
-    pub weight_decay: Option<f64>,
+    pub weight_decay: Option<Decay>,
     /// Momentum
     pub momentum: Option<Momentum>,
     /// Dampening
@@ -72,33 +72,71 @@ impl Optimizer for SGD {
         if let Some(momentum) = self.params.momentum {
             match momentum {
                 Momentum::Classical(momentum) => {
-                    if let Some(wd) = self.params.weight_decay {
-                        for var in &mut self.vars {
-                            let theta = &var.theta;
-                            // let prev_step = var.b;
-                            if let Some(grad) = grads.get(theta) {
-                                let grad = &(grad + (wd * theta.as_tensor())?)?;
-                                if let Some(prev_step) = &(var.b) {
-                                    // println!("Exists");
-                                    // bt​←μbt−1​+(1−τ)gt
-                                    let bt = ((prev_step.as_tensor() * momentum)?
-                                        + (1. - self.params.dampening) * (grad))?;
+                    if let Some(decay) = self.params.weight_decay {
+                        match decay {
+                            Decay::WeightDecay(decay) => {
+                                for var in &mut self.vars {
+                                    let theta = &var.theta;
+                                    // let prev_step = var.b;
+                                    if let Some(grad) = grads.get(theta) {
+                                        let grad = &(grad + (decay * theta.as_tensor())?)?;
+                                        if let Some(prev_step) = &(var.b) {
+                                            // println!("Exists");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            let bt = ((prev_step.as_tensor() * momentum)?
+                                                + (1. - self.params.dampening) * (grad))?;
 
-                                    // if not nesterov gt = bt
-                                    theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
-                                    // println!("Momentum {}", bt);
-                                    prev_step.set(&bt)?;
-                                } else {
-                                    // println!("Doesn't Exist");
-                                    // bt​←μbt−1​+(1−τ)gt
-                                    // if there is no history bt = gt = grad with no weight_decay
-                                    let bt = grad.clone(); // clone must occur invariably due to need to store in hashmap
+                                            // if not nesterov gt = bt
+                                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
+                                            // println!("Momentum {}", bt);
+                                            prev_step.set(&bt)?;
+                                        } else {
+                                            // println!("Doesn't Exist");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            // if there is no history bt = gt = grad with no weight_decay
+                                            let bt = grad.clone(); // clone must occur invariably due to need to store in hashmap
 
-                                    // if not nesterov gt = bt
-                                    theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
-                                    // println!("Momentum {}", bt);
-                                    var.b = Some(Var::from_tensor(&bt)?);
-                                };
+                                            // if not nesterov gt = bt
+                                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
+                                            // println!("Momentum {}", bt);
+                                            var.b = Some(Var::from_tensor(&bt)?);
+                                        };
+                                    }
+                                }
+                            }
+                            Decay::DecoupledWeightDecay(decay) => {
+                                for var in &mut self.vars {
+                                    let theta = &var.theta;
+                                    // let prev_step = var.b;
+                                    if let Some(grad) = grads.get(theta) {
+                                        // decoupled weight decay step
+                                        theta.set(
+                                            &(theta.as_tensor()
+                                                * self.params.lr.mul_add(-decay, 1.))?,
+                                        )?;
+                                        if let Some(prev_step) = &(var.b) {
+                                            // println!("Exists");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            let bt = ((prev_step.as_tensor() * momentum)?
+                                                + (1. - self.params.dampening) * (grad))?;
+
+                                            // if not nesterov gt = bt
+                                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
+                                            // println!("Momentum {}", bt);
+                                            prev_step.set(&bt)?;
+                                        } else {
+                                            // println!("Doesn't Exist");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            // if there is no history bt = gt = grad with no weight_decay
+                                            let bt = grad.clone(); // clone must occur invariably due to need to store in hashmap
+
+                                            // if not nesterov gt = bt
+                                            theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
+                                            // println!("Momentum {}", bt);
+                                            var.b = Some(Var::from_tensor(&bt)?);
+                                        };
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -132,33 +170,71 @@ impl Optimizer for SGD {
                     }
                 }
                 Momentum::Nesterov(momentum) => {
-                    if let Some(wd) = self.params.weight_decay {
-                        for var in &mut self.vars {
-                            let theta = &var.theta;
-                            // let prev_step = var.b;
-                            if let Some(grad) = grads.get(theta) {
-                                let grad = &(grad + (wd * theta.as_tensor())?)?;
-                                if let Some(prev_step) = &(var.b) {
-                                    // println!("Exists");
-                                    // bt​←μbt−1​+(1−τ)gt
-                                    let bt = ((prev_step.as_tensor() * momentum)?
-                                        + (1. - self.params.dampening) * (grad))?;
+                    if let Some(decay) = self.params.weight_decay {
+                        match decay {
+                            Decay::WeightDecay(decay) => {
+                                for var in &mut self.vars {
+                                    let theta = &var.theta;
+                                    // let prev_step = var.b;
+                                    if let Some(grad) = grads.get(theta) {
+                                        let grad = &(grad + (decay * theta.as_tensor())?)?;
+                                        if let Some(prev_step) = &(var.b) {
+                                            // println!("Exists");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            let bt = ((prev_step.as_tensor() * momentum)?
+                                                + (1. - self.params.dampening) * (grad))?;
 
-                                    let gt = (grad + (momentum * &bt)?)?;
-                                    // println!("Momentum {}", bt);
-                                    prev_step.set(&bt)?;
-                                    theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
-                                } else {
-                                    // println!("Doesn't Exist");
-                                    // bt​←μbt−1​+(1−τ)gt
-                                    // if there is no history bt = gt = grad with no weight_decay
-                                    let bt = grad.clone(); // clone must occur invariably due to need to store in hashmap
+                                            let gt = (grad + (momentum * &bt)?)?;
+                                            // println!("Momentum {}", bt);
+                                            prev_step.set(&bt)?;
+                                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
+                                        } else {
+                                            // println!("Doesn't Exist");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            // if there is no history bt = gt = grad with no weight_decay
+                                            let bt = grad.clone(); // clone must occur invariably due to need to store in hashmap
 
-                                    let gt = (grad + (momentum * &bt)?)?;
-                                    // println!("Momentum {}", bt);
-                                    var.b = Some(Var::from_tensor(&bt)?);
-                                    theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
-                                };
+                                            let gt = (grad + (momentum * &bt)?)?;
+                                            // println!("Momentum {}", bt);
+                                            var.b = Some(Var::from_tensor(&bt)?);
+                                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
+                                        };
+                                    }
+                                }
+                            }
+                            Decay::DecoupledWeightDecay(decay) => {
+                                for var in &mut self.vars {
+                                    let theta = &var.theta;
+                                    // let prev_step = var.b;
+                                    if let Some(grad) = grads.get(theta) {
+                                        // decoupled weight decay step
+                                        theta.set(
+                                            &(theta.as_tensor()
+                                                * self.params.lr.mul_add(-decay, 1.))?,
+                                        )?;
+                                        if let Some(prev_step) = &(var.b) {
+                                            // println!("Exists");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            let bt = ((prev_step.as_tensor() * momentum)?
+                                                + (1. - self.params.dampening) * (grad))?;
+
+                                            let gt = (grad + (momentum * &bt)?)?;
+                                            // println!("Momentum {}", bt);
+                                            prev_step.set(&bt)?;
+                                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
+                                        } else {
+                                            // println!("Doesn't Exist");
+                                            // bt​←μbt−1​+(1−τ)gt
+                                            // if there is no history bt = gt = grad with no weight_decay
+                                            let bt = grad.clone(); // clone must occur invariably due to need to store in hashmap
+
+                                            let gt = (grad + (momentum * &bt)?)?;
+                                            // println!("Momentum {}", bt);
+                                            var.b = Some(Var::from_tensor(&bt)?);
+                                            theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
+                                        };
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -192,13 +268,30 @@ impl Optimizer for SGD {
                     }
                 }
             }
-        } else if let Some(wd) = self.params.weight_decay {
-            for var in &mut self.vars {
-                let theta = &var.theta;
-                // let prev_step = var.b;
-                if let Some(grad) = grads.get(theta) {
-                    let grad = &(grad + (wd * theta.as_tensor())?)?; // weight decay grad
-                    theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta
+        } else if let Some(decay) = self.params.weight_decay {
+            // These should be the same up to numeric precision
+            // For SGD with no momentum decoupled weight decay and L2 reg are equivalent
+            match decay {
+                Decay::WeightDecay(decay) => {
+                    for var in &mut self.vars {
+                        let theta = &var.theta;
+                        // let prev_step = var.b;
+                        if let Some(grad) = grads.get(theta) {
+                            let grad = &(grad + (decay * theta.as_tensor())?)?; // weight decay grad
+                            theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta
+                        }
+                    }
+                }
+                Decay::DecoupledWeightDecay(decay) => {
+                    for var in &mut self.vars {
+                        let theta = &var.theta;
+                        // let prev_step = var.b;
+                        if let Some(grad) = grads.get(theta) {
+                            theta
+                                .set(&(theta.as_tensor() * self.params.lr.mul_add(-decay, 1.))?)?;
+                            theta.set(&theta.sub(&(grad * self.params.lr)?)?)?; // update theta based on grad
+                        }
+                    }
                 }
             }
         } else {
