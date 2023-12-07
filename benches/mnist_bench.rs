@@ -1,10 +1,10 @@
 use candle_core::Result as CResult;
 use candle_datasets::vision::Dataset;
-use criterion::{criterion_group, criterion_main, Criterion};
-use optimisers::{
+use candle_optimisers::{
     adadelta::Adadelta, adagrad::Adagrad, adam::Adam, adamax::Adamax, esgd::SGD, nadam::NAdam,
     radam::RAdam, rmsprop::RMSprop,
 };
+use criterion::{criterion_group, criterion_main, Criterion};
 use training::Mlp;
 
 // mod models;

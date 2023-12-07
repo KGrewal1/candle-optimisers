@@ -4,6 +4,48 @@
 //!
 //! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html#torch.optim.RMSprop>
 
+/*!
+RMS prop algorithm
+
+Described in <https://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>
+
+Pseudocode:
+
+$$
+\\begin{aligned}
+            &\\rule{110mm}{0.4pt}                                                                 \\\\
+            &\\textbf{input}      : \\alpha \\text{ (alpha)},\\: \\gamma \\text{ (lr)},
+                \\: \\theta_0 \\text{ (params)}, \\: f(\\theta) \\text{ (objective)}                   \\\\
+            &\\hspace{13mm}   \\lambda \\text{ (weight decay)},\\: \\mu \\text{ (momentum)} \\\\
+            &\\textbf{initialize} : v_0 \\leftarrow 0 \\text{ (square average)}, \\:
+                b_0 \\leftarrow 0 \\text{ (buffer)}, \\: g_0^{ave} \\leftarrow 0     \\\\[-1.ex]
+            &\\rule{110mm}{0.4pt}                                                                 \\\\
+            &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                         \\\\
+            &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})           \\\\
+            &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+            &\\hspace{10mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+            &\\hspace{5mm}v_t           \\leftarrow   \\alpha v_{t-1} + (1 - \\alpha) g^2_t
+                \\hspace{8mm}                                                                     \\\\
+            &\\hspace{5mm} \\tilde{v_t} \\leftarrow v_t                                             \\\\
+            &\\hspace{5mm}\\textbf{if} \\: centered                                                          \\\\
+            &\\hspace{10mm} g_t^{ave} \\leftarrow g_{t-1}^{ave} \\alpha + (1-\\alpha) g_t            \\\\
+            &\\hspace{10mm} \\tilde{v_t} \\leftarrow \\tilde{v_t} -  \\big(g_{t}^{ave} \\big)^2        \\\\
+            &\\hspace{5mm}\\textbf{if} \\: \\mu \\textbf{ is } \\text{Some}                                                               \\\\
+            &\\hspace{10mm} b_t\\leftarrow \\mu b_{t-1} +
+                g_t/ \\big(\\sqrt{\\tilde{v_t}} +  \\epsilon \\big)                                   \\\\
+            &\\hspace{10mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma b_t                \\\\
+            &\\hspace{5mm} \\textbf{else}                                                                  \\\\
+            &\\hspace{10mm}\\theta_t      \\leftarrow   \\theta_{t-1} -
+                \\gamma  g_t/ \\big(\\sqrt{\\tilde{v_t}} + \\epsilon \\big)  \\hspace{3mm}              \\\\
+            &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+            &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+            &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+       \\end{aligned}
+$$
+
+
+*/
+
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 

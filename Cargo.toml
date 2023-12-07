@@ -1,6 +1,6 @@
 [package]
-name = "optimisers"
-version = "0.2.1"
+name = "candle-optimisers"
+version = "0.3.0"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
@@ -51,3 +51,6 @@ uninlined_format_args = {level =  "allow", priority = 1}
 similar_names = {level =  "allow", priority = 1}
 float_cmp = {level =  "allow", priority = 1} # as internaly rounded before the comparison
 doc_markdown= {level =  "allow", priority = 1} # otherwise names get flagged
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "./katex-header.html" ]

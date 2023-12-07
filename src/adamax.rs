@@ -1,8 +1,36 @@
-//! The Adamax optimiser
-//!
-//! An Adam optimiser based on infinity norm, described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
-//!
-//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adamax.html#torch.optim.Adamax>
+/*!
+Adamax optimiser
+
+An Adam optimiser based on infinity norm, described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
+
+Pseudocode (including decoupling of weight decay):
+
+$$
+\\begin{aligned}
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{input}      : \\gamma \\text{ (lr)}, \\beta_1, \\beta_2
+        \\text{ (betas)},\\theta_0 \\text{ (params)},f(\\theta) \\text{ (objective)},
+        \\: \\lambda \\text{ (weight decay)},                                                \\\\
+    &\\hspace{13mm}    \\epsilon \\text{ (epsilon)}                                          \\\\
+    &\\textbf{initialize} :  m_0 \\leftarrow 0 \\text{ ( first moment)},
+        u_0 \\leftarrow 0 \\text{ ( infinity norm)}                                 \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                         \\\\
+    &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})           \\\\
+    &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+    &\\hspace{10mm}\\textbf{if} \\: \\textit{decoupled}                       \\\\
+    &\\hspace{15mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\lambda \\theta_{t-1}                    \\\\
+    &\\hspace{10mm}\\textbf{else}                                                              \\\\
+    &\\hspace{15mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+    &\\hspace{5mm}m_t      \\leftarrow   \\beta_1 m_{t-1} + (1 - \\beta_1) g_t               \\\\
+    &\\hspace{5mm}u_t      \\leftarrow   \\mathrm{max}(\\beta_2 u_{t-1}, |g_{t}|+\\epsilon)   \\\\
+    &\\hspace{5mm}\\theta_t \\leftarrow \\theta_{t-1} - \\frac{\\gamma m_t}{(1-\\beta^t_1) u_t} \\\\
+    &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+    &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+\\end{aligned}
+$$
+*/
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -12,8 +40,6 @@ use crate::Decay;
 /// Adamax optimiser
 ///
 /// An Adam optimiser based on infinity norm, described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
-///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adamax.html#torch.optim.Adamax>
 
 #[derive(Debug)]
 pub struct Adamax {

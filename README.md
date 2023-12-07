@@ -1,4 +1,4 @@
-# Optimisers
+# Candle Optimisers
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/KGrewal1/optimisers/graph/badge.svg?token=6AFTLS6DFO)](https://codecov.io/gh/KGrewal1/optimisers)
@@ -31,7 +31,7 @@ Adaptive methods:
 
 These are all checked against their pytorch implementation (see pytorch_test.ipynb) and should implement the same functionality (though without some input checking).
 
-Additionally all of the adaptive mehods listed implement decoupled weight decay as described in [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf), in addition to the standard weight decay as implemented in pytorch.
+Additionally all of the adaptive mehods listed and SGD implement decoupled weight decay as described in [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf), in addition to the standard weight decay as implemented in pytorch.
 
 Pseudosecond order methods:
 
@@ -58,7 +58,7 @@ to use the cuda backend.
 ## Usage
 
 ```cli
-cargo add --git https://github.com/KGrewal1/optimisers.git optimisers
+cargo add --git https://github.com/KGrewal1/optimisers.git candle-optimisers
 ```
 
 ## To do

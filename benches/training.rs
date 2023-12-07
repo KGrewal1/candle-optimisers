@@ -1,16 +1,18 @@
 use candle_core::{DType, Result, Tensor, Var, D};
 use candle_nn::{loss, ops, Linear, Module, Optimizer, VarBuilder, VarMap};
 
-use optimisers::adadelta::{Adadelta, ParamsAdaDelta};
-use optimisers::adagrad::{Adagrad, ParamsAdaGrad};
-use optimisers::adam::{Adam, ParamsAdam};
-use optimisers::adamax::{Adamax, ParamsAdaMax};
-use optimisers::esgd::{ParamsSGD, SGD};
-use optimisers::lbfgs::{Lbfgs, LineSearch, ParamsLBFGS};
-use optimisers::nadam::{NAdam, ParamsNAdam};
-use optimisers::radam::{ParamsRAdam, RAdam};
-use optimisers::rmsprop::{ParamsRMSprop, RMSprop};
-use optimisers::{LossOptimizer, Model};
+use candle_optimisers::{
+    adadelta::{Adadelta, ParamsAdaDelta},
+    adagrad::{Adagrad, ParamsAdaGrad},
+    adam::{Adam, ParamsAdam},
+    adamax::{Adamax, ParamsAdaMax},
+    esgd::{ParamsSGD, SGD},
+    lbfgs::{Lbfgs, LineSearch, ParamsLBFGS},
+    nadam::{NAdam, ParamsNAdam},
+    radam::{ParamsRAdam, RAdam},
+    rmsprop::{ParamsRMSprop, RMSprop},
+    LossOptimizer, Model,
+};
 
 pub trait Optim: Sized {
     fn new(vars: Vec<Var>) -> Result<Self>;
@@ -217,8 +219,8 @@ pub fn run_lbfgs_training<M: SimpleModel + Model>(
         // step the tensors by backpropagating the loss
         let res = optimiser.backward_step(&loss)?;
         match res {
-            optimisers::ModelOutcome::Converged(_, _) => break,
-            optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            candle_optimisers::ModelOutcome::Converged(_, _) => break,
+            candle_optimisers::ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
             // _ => panic!("unexpected outcome"),
         }
     }
