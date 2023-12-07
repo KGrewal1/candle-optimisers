@@ -1,8 +1,49 @@
-//! The RAdam optimiser
-//!
-//! Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
-//!
-//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
+/*!
+RAdam optimiser: Adam with Nesterov momentum
+
+Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
+
+As decoupled weight decay is implemented, this can be used equivalent to the paper (which uses decoupled weight decay),
+or the PyTorch implementation (which does not)
+
+Pseudocode (including decoupling of weight decay):
+
+$$
+\\begin{aligned}
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{input}      : \\gamma \\text{ (lr)}, \\: \\beta_1, \\beta_2
+        \\text{ (betas)}, \\: \\theta_0 \\text{ (params)}, \\:f(\\theta) \\text{ (objective)}, \\:
+        \\lambda \\text{ (weightdecay)},                                                   \\\\
+    &\\hspace{13mm} \\epsilon \\text{ (epsilon)}                                            \\\\
+    &\\textbf{initialize} :  m_0 \\leftarrow 0 \\text{ ( first moment)},
+        v_0 \\leftarrow 0 \\text{ ( second moment)},                                       \\\\
+    &\\hspace{18mm} \\rho_{\\infty} \\leftarrow 2/(1-\\beta_2) -1                      \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}  \\\\
+    &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                         \\\\
+    &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})           \\\\
+    &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+    &\\hspace{10mm}\\textbf{if} \\: \\textit{decoupled}                       \\\\
+    &\\hspace{15mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\lambda \\theta_{t-1}                    \\\\
+    &\\hspace{10mm}\\textbf{else}                                                              \\\\
+    &\\hspace{15mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+    &\\hspace{5mm}m_t           \\leftarrow   \\beta_1 m_{t-1} + (1 - \\beta_1) g_t          \\\\
+    &\\hspace{5mm}v_t           \\leftarrow   \\beta_2 v_{t-1} + (1-\\beta_2) g^2_t          \\\\
+    &\\hspace{5mm}\\widehat{m_t} \\leftarrow   m_t/\\big(1-\\beta_1^t \\big)                   \\\\
+    &\\hspace{5mm}\\rho_t \\leftarrow \\rho_{\\infty} -
+        2 t \\beta^t_2 /\\big(1-\\beta_2^t \\big)                                    \\\\[0.1.ex]
+    &\\hspace{5mm}\\textbf{if} \\: \\rho_t > 5                                               \\\\
+    &\\hspace{10mm} l_t \\leftarrow \\frac{\\sqrt{ (1-\\beta^t_2) }}{ \\sqrt{v_t} +\\epsilon  } \\\\
+    &\\hspace{10mm} r_t \\leftarrow
+    \\sqrt{\\frac{(\\rho_t-4)(\\rho_t-2)\\rho_{\\infty}}{(\\rho_{\\infty}-4)(\\rho_{\\infty}-2) \\rho_t}} \\\\
+    &\\hspace{10mm}\\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\widehat{m_t} r_t l_t        \\\\
+    &\\hspace{5mm}\\textbf{else}                                                           \\\\
+    &\\hspace{10mm}\\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\widehat{m_t}                \\\\
+    &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+    &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+\\end{aligned}
+$$
+*/
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -12,8 +53,6 @@ use crate::Decay;
 /// R Adam optimiser
 ///
 /// Described in [On the Variance of the Adaptive Learning Rate and Beyond](https://arxiv.org/abs/1908.03265)
-///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RAdam.html>
 
 #[derive(Debug)]
 pub struct RAdam {

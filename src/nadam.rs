@@ -1,8 +1,42 @@
-//! The NAdam optimiser: Adam with Nesterov momentum
-//!
-//! Described in [Incorporating Nesterov Momentum into Adam](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
-//!
-//! For pseudocode see <https://pytorch.org/docs/stable/generated/torch.optim.NAdam.html#nadam>
+/*!
+NAdam optimiser: Adam with Nesterov momentum
+
+Described in [Incorporating Nesterov Momentum into Adam](https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ)
+
+Pseudocode (including decoupling of weight decay):
+
+$$
+\\begin{aligned}
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{input}      : \\gamma_t \\text{ (lr)}, \\: \\beta_1,\\beta_2 \\text{ (betas)},
+        \\: \\theta_0 \\text{ (params)}, \\: f(\\theta) \\text{ (objective)}                   \\\\
+    &\\hspace{12mm} \\: \\lambda \\text{ (weight decay)}, \\:\\psi \\text{ (momentum decay)}    \\\\
+    &\\textbf{initialize} :  m_0 \\leftarrow 0 \\text{ ( first moment)},
+        v_0 \\leftarrow 0 \\text{ ( second moment)}                                 \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                         \\\\
+    &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})           \\\\
+    &\\hspace{5mm} \\theta_t \\leftarrow \\theta_{t-1}                                       \\\\
+    &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+    &\\hspace{10mm}\\textbf{if} \\: \\textit{decoupled}                       \\\\
+    &\\hspace{15mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\lambda \\theta_{t-1}                    \\\\
+    &\\hspace{10mm}\\textbf{else}                                                              \\\\
+    &\\hspace{15mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+    &\\hspace{5mm} \\mu_t \\leftarrow \\beta_1 \\big(1 - \\frac{1}{2}  0.96^{t \\psi} \\big)     \\\\
+    &\\hspace{5mm} \\mu_{t+1} \\leftarrow \\beta_1 \\big(1 - \\frac{1}{2} 0.96^{(t+1)\\psi}\\big)\\\\
+    &\\hspace{5mm}m_t           \\leftarrow   \\beta_1 m_{t-1} + (1 - \\beta_1) g_t          \\\\
+    &\\hspace{5mm}v_t           \\leftarrow   \\beta_2 v_{t-1} + (1-\\beta_2) g^2_t          \\\\
+    &\\hspace{5mm}\\widehat{m_t} \\leftarrow \\mu_{t+1} m_t/(1-\\prod_{i=1}^{t+1}\\mu_i)\\\\[-1.ex]
+    & \\hspace{11mm} + (1-\\mu_t) g_t /(1-\\prod_{i=1}^{t} \\mu_{i})                         \\\\
+    &\\hspace{5mm}\\widehat{v_t} \\leftarrow   v_t/\\big(1-\\beta_2^t \\big)                   \\\\
+    &\\hspace{5mm}\\theta_t \\leftarrow \\theta_t - \\gamma \\widehat{m_t}/
+        \\big(\\sqrt{\\widehat{v_t}} + \\epsilon \\big)                                       \\\\
+    &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+    &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+\\end{aligned}
+$$
+*/
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -12,9 +46,6 @@ use crate::Decay;
 /// Adam optimiser with Nesterov momentum
 ///
 /// Described in <https://openreview.net/forum?id=OM0jvwB8jIp57ZJjtNEZ>
-///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.NAdam.html#torch.optim.NAdam>
-
 #[derive(Debug)]
 pub struct NAdam {
     vars: Vec<VarNAdam>,

@@ -1,14 +1,51 @@
-//! Adam optimiser
-//!
-//! This includes AdamW via use of decoupled weight decay
-//!
-//! Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
-//! and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
-//!
-//! The AMSGrad variant is also implemented, described in [On the Convergence of Adam and Beyond](https://openreview.net/forum?id=ryQu7f-RZ)
-//!
-//! For pseudocode see <https://pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam> and
-//! <https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html#torch.optim.AdamW>
+/*!
+Adam optimiser
+
+This includes AdamW via use of decoupled weight decay
+
+Described in [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980)
+and [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101)
+
+The AMSGrad variant is also implemented, described in [On the Convergence of Adam and Beyond](https://openreview.net/forum?id=ryQu7f-RZ)
+
+Pseudocode (including decoupling of weight decay AdamW):
+
+Note the AMSGrad branch is different to the PyTorch pseudocode: this is however equivalent to the torch implementation as far as I can tell.
+
+$$
+\\begin{aligned}
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{input}      : \\gamma \\text{ (lr)}, \\beta_1, \\beta_2
+    \\text{ (betas)},\\theta_0 \\text{ (params)},f(\\theta) \\text{ (objective)}          \\\\
+    &\\hspace{13mm}      \\lambda \\text{ (weight decay)},  \\: \\textit{amsgrad}    \\\\
+    &\\textbf{initialize} :  m_0 \\leftarrow 0 \\text{ ( first moment)},
+                v_0\\leftarrow 0 \\text{ (second moment)},\\: v_0^{max}\\leftarrow 0                          \\\\[-1.ex]
+    &\\rule{110mm}{0.4pt}                                                                 \\\\
+    &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                         \\\\
+    &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})           \\\\
+    &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+    &\\hspace{10mm}\\textbf{if} \\: \\textit{decoupled}                       \\\\
+    &\\hspace{15mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\lambda \\theta_{t-1}                    \\\\
+    &\\hspace{10mm}\\textbf{else}                                                              \\\\
+    &\\hspace{15mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+    &\\hspace{5mm}m_t           \\leftarrow   \\beta_1 m_{t-1} + (1 - \\beta_1) g_t          \\\\
+    &\\hspace{5mm}v_t           \\leftarrow   \\beta_2 v_{t-1} + (1-\\beta_2) g^2_t          \\\\
+    &\\hspace{5mm}\\widehat{m_t} \\leftarrow   m_t/\\big(1-\\beta_1^t \\big)                   \\\\
+    &\\hspace{5mm}\\textbf{if} \\: amsgrad                                                  \\\\
+    &\\hspace{10mm}v_t^{max} \\leftarrow \\mathrm{max}(v_{t-1}^{max}, v_t)    \\\\
+    &\\hspace{10mm}\\widehat{v_t}^{max} \\leftarrow v_t^{max}   /\\big(1-\\beta_2^t \\big)  \\\\
+    &\\hspace{10mm}\\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\widehat{m_t}/
+        \\big(\\sqrt{\\widehat{v_t}^{max}} + \\epsilon \\big)                                 \\\\
+    &\\hspace{5mm}\\textbf{else}                                                           \\\\
+    &\\hspace{10mm}\\widehat{v_t} \\leftarrow   v_t/\\big(1-\\beta_2^t \\big)                   \\\\
+    &\\hspace{10mm}\\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\widehat{m_t}/
+    \\big(\\sqrt{\\widehat{v_t}} + \\epsilon \\big)                                       \\\\
+        &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+        &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+        &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+\\end{aligned}
+$$
+*/
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;

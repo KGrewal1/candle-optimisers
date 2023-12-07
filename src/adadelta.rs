@@ -1,8 +1,37 @@
-//! Adadelta optimiser
-//!
-//! Described in [ADADELTA: An Adaptive Learning Rate Method](https://arxiv.org/abs/1212.5701)
-//!
-//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adadelta.html>
+/*!
+Adadelta optimiser
+
+Described in [ADADELTA: An Adaptive Learning Rate Method](https://arxiv.org/abs/1212.5701)
+
+Pseudocode (including decoupling of weight decay):
+$$
+\\begin{aligned}
+            &\\rule{110mm}{0.4pt}                                                                 \\\\
+            &\\textbf{input}      : \\gamma \\text{ (lr)}, \\: \\theta_0 \\text{ (params)},
+                \\: f(\\theta) \\text{ (objective)}, \\: \\rho \\text{ (decay)},
+                \\: \\lambda \\text{ (weight decay)}                                                \\\\
+            &\\textbf{initialize} :  v_0  \\leftarrow 0 \\: \\text{ (square avg)},
+                \\: u_0 \\leftarrow 0 \\: \\text{ (accumulate variables)}                     \\\\[-1.ex]
+            &\\rule{110mm}{0.4pt}                                                                 \\\\
+            &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                     \\\\
+            &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})          \\\\
+            &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+            &\\hspace{10mm}\\textbf{if} \\: \\textit{decoupled}                       \\\\
+            &\\hspace{15mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\lambda \\theta_{t-1}                    \\\\
+            &\\hspace{10mm}\\textbf{else}                                                              \\\\
+            &\\hspace{15mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+            &\\hspace{5mm} v_t      \\leftarrow v_{t-1} \\rho + g^2_t (1 - \\rho)                    \\\\
+            &\\hspace{5mm}\\Delta x_t    \\leftarrow   \\frac{\\sqrt{u_{t-1} +
+                \\epsilon }}{ \\sqrt{v_t + \\epsilon}  }g_t \\hspace{21mm}                           \\\\
+            &\\hspace{5mm} u_t  \\leftarrow   u_{t-1}  \\rho +
+                 \\Delta x^2_t  (1 - \\rho)                                                        \\\\
+            &\\hspace{5mm}\\theta_t      \\leftarrow   \\theta_{t-1} - \\gamma  \\Delta x_t            \\\\
+            &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+            &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+            &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+       \\end{aligned}
+$$
+*/
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -12,8 +41,6 @@ use crate::Decay;
 /// Adadelta optimiser
 ///
 /// Described in [ADADELTA: An Adaptive Learning Rate Method](https://arxiv.org/abs/1212.5701)
-///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adadelta.html>
 #[derive(Debug)]
 pub struct Adadelta {
     vars: Vec<VarAdaDelta>,

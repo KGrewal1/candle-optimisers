@@ -1,5 +1,7 @@
-//! Optimisers for use with the candle framework for lightweight machine learning.
-//! These currently all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
+/*!
+Optimisers for use with the candle framework for lightweight machine learning.
+Apart from LBFGS, these all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
+*/
 
 use std::fmt::Debug;
 

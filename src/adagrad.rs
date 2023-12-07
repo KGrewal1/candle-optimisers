@@ -1,8 +1,38 @@
-//! Adagrad optimiser
-//!
-//! Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
-//!
-//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adagrad.html>
+/*!
+Adagrad optimiser
+
+Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
+
+Pseudocode (including decoupling of weight decay):
+
+$$
+\\begin{aligned}
+            &\\rule{110mm}{0.4pt}                                                                 \\\\
+            &\\textbf{input}      : \\gamma \\text{ (lr)}, \\: \\theta_0 \\text{ (params)}, \\: f(\\theta)
+                \\text{ (objective)}, \\: \\lambda \\text{ (weight decay)},                          \\\\
+            &\\hspace{12mm}    \\tau \\text{ (initial accumulator value)}, \\: \\eta\\text{ (lr decay)}\\\\
+            &\\textbf{initialize} :  statesum_0 \\leftarrow 0                             \\\\[-1.ex]
+            &\\rule{110mm}{0.4pt}                                                                 \\\\
+            &\\textbf{for} \\: t=1 \\: \\textbf{to} \\: \\ldots \\: \\textbf{do}                         \\\\
+            &\\hspace{5mm}g_t           \\leftarrow   \\nabla_{\\theta} f_t (\\theta_{t-1})           \\\\
+            &\\hspace{5mm} \\tilde{\\gamma}    \\leftarrow \\gamma / (1 +(t-1) \\eta)                  \\\\
+            &\\hspace{5mm}\\textbf{if} \\: \\lambda \\textbf{ is } \\text{Some}                        \\\\
+            &\\hspace{10mm}\\textbf{if} \\: \\textit{decoupled}                       \\\\
+            &\\hspace{15mm} \\theta_t \\leftarrow \\theta_{t-1} - \\gamma \\lambda \\theta_{t-1}                    \\\\
+            &\\hspace{10mm}\\textbf{else}                                                              \\\\
+            &\\hspace{15mm} g_t \\leftarrow g_t + \\lambda  \\theta_{t-1}                            \\\\
+            &\\hspace{5mm}statesum_t  \\leftarrow  statesum_{t-1} + g^2_t                      \\\\
+            &\\hspace{5mm}\\theta_t \\leftarrow
+                \\theta_{t-1}- \\tilde{\\gamma} \\frac{g_t}{\\sqrt{statesum_t}+\\epsilon}            \\\\
+            &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+            &\\bf{return} \\:  \\theta_t                                                     \\\\[-1.ex]
+            &\\rule{110mm}{0.4pt}                                                          \\\\[-1.ex]
+       \\end{aligned}
+$$
+
+
+
+*/
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
@@ -12,9 +42,6 @@ use crate::Decay;
 /// Adagrad optimiser
 ///
 /// Described in [Adaptive Subgradient Methods for Online Learning and Stochastic Optimization](https://jmlr.org/papers/v12/duchi11a.html)
-///
-/// For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.Adagrad.html>
-
 #[derive(Debug)]
 pub struct Adagrad {
     vars: Vec<VarAdaGrad>,
