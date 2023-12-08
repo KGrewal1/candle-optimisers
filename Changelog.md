@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.1 (curr)
+
+* Improved Documentation
+
 ## v0.3.0 (2023-12-07)
 
 * Renamed to candle-optimisers for release on crates.io

@@ -25,10 +25,12 @@ pub enum LineSearch {
     ///
     /// Ensures the Strong Wolfe conditions are met for step size $t$ in direction $\bm{d}$:
     ///
+    /// Armijo rule:
     /// $$ f(x + t \bm{d}) \leq f(x) + c_1 t \bm{d}^T \nabla f(x)  $$
     ///
     /// and
     ///
+    ///  Strong Curvature Condition:
     /// $$ |\bm{d}^{T} \nabla f(x + t \bm{d})| \leq c_{2} |\bm{d}^{T} \nabla f(x)| $$
     StrongWolfe(f64, f64, f64),
 }
