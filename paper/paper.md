@@ -18,7 +18,7 @@ bibliography: paper.bib
 
 # Summary
 
-`candle-optimisers` is a crate for optimisers written in Rust for use with candle (@candle) a lightweight machine learning framework. The library offers a set of
+`candle-optimisers` is a crate for optimisers written in Rust for use with candle (@candle) a lightweight machine learning framework. The crate offers a set of
 optimisers for training neural networks. This allows network training to be done with far lower overhead than using a full python framework such as PyTorch or Tensorflow.
 
 # Statement of need
