@@ -321,7 +321,7 @@ enum VarAdam {
 
 /// Parameters for the Adam optimiser
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ParamsAdam {
     /// Learning rate
     pub lr: f64,

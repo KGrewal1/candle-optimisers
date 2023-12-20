@@ -56,7 +56,7 @@ struct VarAdaDelta {
 }
 
 /// Parameters for the Adadelta optimiser
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ParamsAdaDelta {
     /// Learning rate
     pub lr: f64,
