@@ -3,7 +3,7 @@
 ## v0.3.1 (2023-12-20)
 
 * Improved Documentation
-* Add ability to set more model parameters (see issue <https://github.com/huggingface/candle/issues/1448> regarding LR schedulers in `candle`)
+* Add ability to set more optimiser parameters (see issue <https://github.com/huggingface/candle/issues/1448> regarding LR schedulers in `candle`)
 * All params are now `Clone`, `PartialEq` and `PartialOrd`
 
 ## v0.3.0 (2023-12-07)

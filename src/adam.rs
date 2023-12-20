@@ -507,6 +507,14 @@ mod tests {
         optim.set_params(ams_params);
         // amsgrad cannot be changed once set
         assert_eq!(new_params, optim.params().clone());
+        optim.set_betas(0.1, 0.1);
+        let final_params = ParamsAdam {
+            lr: 0.002,
+            beta_1: 0.1,
+            beta_2: 0.1,
+            ..Default::default()
+        };
+        assert_eq!(final_params, optim.params().clone());
         Ok(())
     }
 }
