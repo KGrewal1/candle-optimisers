@@ -67,7 +67,7 @@ pub enum ModelOutcome {
 }
 
 /// Method of weight decay to use
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Decay {
     /// Weight decay regularisation to penalise large weights
     ///
@@ -88,7 +88,7 @@ pub enum Decay {
 }
 
 /// Type of momentum to use
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum Momentum {
     /// classical momentum
     Classical(f64),

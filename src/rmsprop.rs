@@ -421,7 +421,7 @@ enum VarRMS {
 }
 
 /// Parameters for RMSprop
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsRMSprop {
     /// Learning rate
     pub lr: f64,

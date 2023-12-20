@@ -70,7 +70,7 @@ struct VarRAdam {
 }
 
 /// Parameters for the RAdam optimiser
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsRAdam {
     /// Learning rate
     pub lr: f64,

@@ -56,7 +56,7 @@ struct VarAdaDelta {
 }
 
 /// Parameters for the Adadelta optimiser
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsAdaDelta {
     /// Learning rate
     pub lr: f64,
@@ -240,6 +240,22 @@ mod tests {
         let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsAdaDelta {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let mut optim = Adadelta::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_approx_eq!(0.004, optim.learning_rate());
+        optim.set_learning_rate(0.002);
+        assert_approx_eq!(0.002, optim.learning_rate());
         Ok(())
     }
 }

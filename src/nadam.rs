@@ -65,7 +65,7 @@ struct VarNAdam {
 }
 
 /// Parameters for The NAdam optimiser
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsNAdam {
     /// Learning rate
     pub lr: f64,

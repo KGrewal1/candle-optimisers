@@ -56,7 +56,7 @@ struct VarAdaMax {
 }
 
 /// Parameters for the Adamax optimiser
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsAdaMax {
     /// Learning rate
     pub lr: f64,

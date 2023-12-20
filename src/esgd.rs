@@ -55,7 +55,7 @@ struct VarSGD {
 }
 
 /// Parameters for SGD
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsSGD {
     /// Learning rate
     pub lr: f64,

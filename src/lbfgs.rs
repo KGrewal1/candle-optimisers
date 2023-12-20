@@ -17,7 +17,7 @@ mod strong_wolfe;
 
 /// Line search method
 /// Only Strong Wolfe is currently implemented
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum LineSearch {
     /// strong wolfe line search: c1, c2, tolerance
@@ -36,7 +36,7 @@ pub enum LineSearch {
 }
 
 /// Conditions for terminsation based on gradient
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum GradConv {
     /// convergence based on max abs component of gradient
@@ -46,7 +46,7 @@ pub enum GradConv {
 }
 
 /// Conditions for termination based on step size
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum StepConv {
     /// convergence based on max abs component of step
@@ -56,7 +56,7 @@ pub enum StepConv {
 }
 
 /// Parameters for LBFGS optimiser
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct ParamsLBFGS {
     /// 'Learning rate': used for initial step size guess
     /// and when no line search is used

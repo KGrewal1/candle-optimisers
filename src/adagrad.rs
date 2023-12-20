@@ -56,7 +56,7 @@ struct VarAdaGrad {
 }
 
 /// Parameters for the Adagrad optimiser
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsAdaGrad {
     /// Learning rate
     pub lr: f64,
