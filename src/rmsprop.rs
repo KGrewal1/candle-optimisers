@@ -527,6 +527,11 @@ impl RMSprop {
             VarRMS::MomentumCentered(vars) => vars.into_inner(),
         }
     }
+
+    /// get the current parameters of the Optimiser
+    pub fn params(&self) -> &ParamsRMSprop {
+        &self.params
+    }
 }
 
 #[cfg(test)]

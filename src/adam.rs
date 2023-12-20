@@ -49,8 +49,9 @@ $$
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
+use log::warn;
 
-use crate::Decay;
+use crate::{Decay, OptimParams};
 
 trait AdamInner {
     fn new(vars: Vec<Var>) -> Result<Self>
@@ -389,6 +390,30 @@ impl Optimizer for Adam {
     }
 }
 
+impl OptimParams for Adam {
+    fn params(&self) -> &Self::Config {
+        &self.params
+    }
+
+    /// Set the parameters for the optimiser
+    ///
+    /// # Warning
+    ///
+    /// As the AMSGrad variant requires having tracked an additional tensor
+    /// this variable cannot be changed once set initally on creation of the optimiser.
+    fn set_params(&mut self, config: Self::Config) {
+        let ams_grad = self.params.amsgrad;
+        if ams_grad != config.amsgrad {
+            warn!("AMSGrad cannot be changed once set");
+            let mut config = config;
+            config.amsgrad = ams_grad;
+            self.params = config;
+        } else {
+            self.params = config;
+        }
+    }
+}
+
 impl Adam {
     /// Return the vars being optimised
     #[must_use]
@@ -399,9 +424,13 @@ impl Adam {
         }
     }
 
-    // pub fn push(&mut self, var: &Var) {
-    //     self.vars.push(var.clone());
-    // }
+    /// set the betas
+    ///
+    /// this can be combined with set_lr for LR and momentum decay scheduling
+    pub fn set_betas(&mut self, beta_1: f64, beta_2: f64) {
+        self.params.beta_1 = beta_1;
+        self.params.beta_2 = beta_2;
+    }
 }
 
 #[cfg(test)]
