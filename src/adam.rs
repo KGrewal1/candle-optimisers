@@ -49,8 +49,9 @@ $$
 
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
+use log::warn;
 
-use crate::Decay;
+use crate::{Decay, OptimParams};
 
 trait AdamInner {
     fn new(vars: Vec<Var>) -> Result<Self>
@@ -320,7 +321,7 @@ enum VarAdam {
 
 /// Parameters for the Adam optimiser
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsAdam {
     /// Learning rate
     pub lr: f64,
@@ -389,6 +390,30 @@ impl Optimizer for Adam {
     }
 }
 
+impl OptimParams for Adam {
+    fn params(&self) -> &Self::Config {
+        &self.params
+    }
+
+    /// Set the parameters for the optimiser
+    ///
+    /// # Warning
+    ///
+    /// As the AMSGrad variant requires having tracked an additional tensor
+    /// this variable cannot be changed once set initally on creation of the optimiser.
+    fn set_params(&mut self, config: Self::Config) {
+        let ams_grad = self.params.amsgrad;
+        if ams_grad == config.amsgrad {
+            self.params = config;
+        } else {
+            warn!("AMSGrad cannot be changed once set");
+            let mut config = config;
+            config.amsgrad = ams_grad;
+            self.params = config;
+        }
+    }
+}
+
 impl Adam {
     /// Return the vars being optimised
     #[must_use]
@@ -399,9 +424,13 @@ impl Adam {
         }
     }
 
-    // pub fn push(&mut self, var: &Var) {
-    //     self.vars.push(var.clone());
-    // }
+    /// set the betas
+    ///
+    /// this can be combined with set_lr for LR and momentum decay scheduling
+    pub fn set_betas(&mut self, beta_1: f64, beta_2: f64) {
+        self.params.beta_1 = beta_1;
+        self.params.beta_2 = beta_2;
+    }
 }
 
 #[cfg(test)]
@@ -423,10 +452,10 @@ mod tests {
         // Now use backprop to run a linear regression between samples and get the coefficients back.
         let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
         let b = Var::new(0f32, &Device::Cpu)?;
-        let mut n_sgd = Adam::new(vec![w.clone(), b.clone()], params)?;
-        assert_approx_eq!(0.004, n_sgd.learning_rate());
-        n_sgd.set_learning_rate(0.002);
-        assert_approx_eq!(0.002, n_sgd.learning_rate());
+        let mut optim = Adam::new(vec![w.clone(), b.clone()], params)?;
+        assert_approx_eq!(0.004, optim.learning_rate());
+        optim.set_learning_rate(0.002);
+        assert_approx_eq!(0.002, optim.learning_rate());
         Ok(())
     }
 
@@ -435,8 +464,8 @@ mod tests {
         let params = ParamsAdam::default();
         let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = Adam::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = Adam::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
         let params = ParamsAdam {
@@ -449,6 +478,43 @@ mod tests {
         let inner = n_sgd.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsAdam {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let mut optim = Adam::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_eq!(params, optim.params().clone());
+        let new_params = ParamsAdam {
+            lr: 0.002,
+            ..Default::default()
+        };
+        optim.set_params(new_params.clone());
+        assert_eq!(new_params, optim.params().clone());
+
+        let ams_params = ParamsAdam {
+            lr: 0.002,
+            amsgrad: true,
+            ..Default::default()
+        };
+        optim.set_params(ams_params);
+        // amsgrad cannot be changed once set
+        assert_eq!(new_params, optim.params().clone());
+        optim.set_betas(0.1, 0.1);
+        let final_params = ParamsAdam {
+            lr: 0.002,
+            beta_1: 0.1,
+            beta_2: 0.1,
+            ..Default::default()
+        };
+        assert_eq!(final_params, optim.params().clone());
         Ok(())
     }
 }

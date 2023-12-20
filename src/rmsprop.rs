@@ -1,9 +1,3 @@
-//! The RMS prop algorithm
-//!
-//! Described in <https://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>
-//!
-//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html#torch.optim.RMSprop>
-
 /*!
 RMS prop algorithm
 
@@ -421,7 +415,7 @@ enum VarRMS {
 }
 
 /// Parameters for RMSprop
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsRMSprop {
     /// Learning rate
     pub lr: f64,
@@ -527,6 +521,12 @@ impl RMSprop {
             VarRMS::MomentumCentered(vars) => vars.into_inner(),
         }
     }
+
+    /// get the current parameters of the Optimiser
+    #[must_use]
+    pub fn params(&self) -> &ParamsRMSprop {
+        &self.params
+    }
 }
 
 #[cfg(test)]
@@ -548,10 +548,10 @@ mod tests {
         // Now use backprop to run a linear regression between samples and get the coefficients back.
         let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
         let b = Var::new(0f32, &Device::Cpu)?;
-        let mut n_sgd = RMSprop::new(vec![w.clone(), b.clone()], params)?;
-        assert_approx_eq!(0.004, n_sgd.learning_rate());
-        n_sgd.set_learning_rate(0.002);
-        assert_approx_eq!(0.002, n_sgd.learning_rate());
+        let mut optim = RMSprop::new(vec![w.clone(), b.clone()], params)?;
+        assert_approx_eq!(0.004, optim.learning_rate());
+        optim.set_learning_rate(0.002);
+        assert_approx_eq!(0.002, optim.learning_rate());
         Ok(())
     }
 
@@ -560,8 +560,8 @@ mod tests {
         let params = ParamsRMSprop::default();
         let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = RMSprop::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = RMSprop::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
 
@@ -571,8 +571,8 @@ mod tests {
         };
         let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = RMSprop::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = RMSprop::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
 
@@ -582,8 +582,8 @@ mod tests {
         };
         let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = RMSprop::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = RMSprop::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
 
@@ -593,10 +593,24 @@ mod tests {
             ..Default::default()
         };
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = RMSprop::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = RMSprop::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsRMSprop {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let optim = RMSprop::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_eq!(params, optim.params().clone());
         Ok(())
     }
 }

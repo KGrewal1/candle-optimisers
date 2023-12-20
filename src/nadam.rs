@@ -41,7 +41,7 @@ $$
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-use crate::Decay;
+use crate::{Decay, OptimParams};
 
 /// Adam optimiser with Nesterov momentum
 ///
@@ -65,7 +65,7 @@ struct VarNAdam {
 }
 
 /// Parameters for The NAdam optimiser
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ParamsNAdam {
     /// Learning rate
     pub lr: f64,
@@ -224,6 +224,16 @@ impl Optimizer for NAdam {
     }
 }
 
+impl OptimParams for NAdam {
+    fn params(&self) -> &Self::Config {
+        &self.params
+    }
+
+    fn set_params(&mut self, config: Self::Config) {
+        self.params = config;
+    }
+}
+
 impl NAdam {
     /// Return the vars being optimised
     #[must_use]
@@ -255,10 +265,10 @@ mod tests {
         // Now use backprop to run a linear regression between samples and get the coefficients back.
         let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
         let b = Var::new(0f32, &Device::Cpu)?;
-        let mut n_sgd = NAdam::new(vec![w.clone(), b.clone()], params)?;
-        assert_approx_eq!(0.004, n_sgd.learning_rate());
-        n_sgd.set_learning_rate(0.002);
-        assert_approx_eq!(0.002, n_sgd.learning_rate());
+        let mut optim = NAdam::new(vec![w.clone(), b.clone()], params)?;
+        assert_approx_eq!(0.004, optim.learning_rate());
+        optim.set_learning_rate(0.002);
+        assert_approx_eq!(0.002, optim.learning_rate());
         Ok(())
     }
 
@@ -267,10 +277,30 @@ mod tests {
         let params = ParamsNAdam::default();
         let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = NAdam::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = NAdam::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsNAdam {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let mut optim = NAdam::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_eq!(params, optim.params().clone());
+        let new_params = ParamsNAdam {
+            lr: 0.002,
+            ..Default::default()
+        };
+        optim.set_params(new_params.clone());
+        assert_eq!(new_params, optim.params().clone());
         Ok(())
     }
 }
