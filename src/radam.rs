@@ -48,7 +48,7 @@ $$
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-use crate::Decay;
+use crate::{Decay, OptimParams};
 
 /// R Adam optimiser
 ///
@@ -232,6 +232,16 @@ impl Optimizer for RAdam {
 
     fn set_learning_rate(&mut self, lr: f64) {
         self.params.lr = lr;
+    }
+}
+
+impl OptimParams for RAdam {
+    fn params(&self) -> &Self::Config {
+        &self.params
+    }
+
+    fn set_params(&mut self, config: Self::Config) {
+        self.params = config;
     }
 }
 

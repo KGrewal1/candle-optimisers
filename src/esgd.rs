@@ -39,7 +39,7 @@ $$
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-use crate::{Decay, Momentum};
+use crate::{Decay, Momentum, OptimParams};
 
 /// Optimizer for Stochastic Gradient Descent with momentum.
 #[derive(Debug)]
@@ -341,6 +341,16 @@ impl Optimizer for SGD {
 
     fn set_learning_rate(&mut self, lr: f64) {
         self.params.lr = lr;
+    }
+}
+
+impl OptimParams for SGD {
+    fn params(&self) -> &Self::Config {
+        &self.params
+    }
+
+    fn set_params(&mut self, config: Self::Config) {
+        self.params = config;
     }
 }
 

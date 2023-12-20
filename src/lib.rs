@@ -18,6 +18,14 @@ pub mod nadam;
 pub mod radam;
 pub mod rmsprop;
 
+/// Trait for optimisers to expose their parameters
+pub trait OptimParams: candle_nn::optim::Optimizer {
+    /// get the current parameters of the Optimiser
+    fn params(&self) -> &Self::Config;
+    /// set the current parameters of the Optimiser
+    fn set_params(&mut self, config: Self::Config);
+}
+
 /// Trait for Models: this is needed for optimisers that require the ability to calculate the loss
 /// such as LBFGS
 pub trait Model: Sized {

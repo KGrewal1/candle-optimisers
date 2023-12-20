@@ -1,8 +1,9 @@
 # Changelog
 
-## v0.3.1 (curr)
+## v0.4
 
 * Improved Documentation
+* Add ability to set more model parameters (see issue <https://github.com/huggingface/candle/issues/1448> regarding LR schedulers in `candle`)
 
 ## v0.3.0 (2023-12-07)
 

@@ -35,7 +35,7 @@ $$
 use candle_core::{Result, Var};
 use candle_nn::optim::Optimizer;
 
-use crate::Decay;
+use crate::{Decay, OptimParams};
 
 /// Adamax optimiser
 ///
@@ -180,6 +180,16 @@ impl Optimizer for Adamax {
 
     fn set_learning_rate(&mut self, lr: f64) {
         self.params.lr = lr;
+    }
+}
+
+impl OptimParams for Adamax {
+    fn params(&self) -> &Self::Config {
+        &self.params
+    }
+
+    fn set_params(&mut self, config: Self::Config) {
+        self.params = config;
     }
 }
 
