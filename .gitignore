@@ -6,3 +6,5 @@ lbfgs_testbed.ipynb
 test*.ipynb
 References.md
 pseudo/*
+paper/paper.pdf
+paper/paper.jats

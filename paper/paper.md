@@ -10,7 +10,7 @@ authors:
     orcid: 0009-0001-7923-9975
     affiliation: 1
 affiliations:
- - name: University of Cambridge
+ - name: Yusuf Hamied Department of Chemistry, University of Cambridge
    index: 1
 date: 12 December 2023
 bibliography: paper.bib
@@ -18,43 +18,43 @@ bibliography: paper.bib
 
 # Summary
 
-`candle-optimisers` is a crate for optimisers written in Rust for use with [candle] a lightweight machine learning framework. The library offers a set of
+`candle-optimisers` is a crate for optimisers written in Rust for use with candle (@candle) a lightweight machine learning framework. The library offers a set of
 optimisers for training neural networks. This allows network training to be done with far lower overhead than using a full python framework such as PyTorch or Tensorflow.
 
 # Statement of need
 
 Rust provides the opportunity for the development of high performance machine learning libraries, with a leaner runtime. However, there is a lack of optimisation algorithms implemented in Rust,
 with libraries currently implementing only some combination of Adam, AdamW, SGD and RMSProp.
-This crate aims to provide a set of complete set of optimisation algorithms for use with [candle].
-This will allow Rust to be used for the training of models more easily as well as the deployment of inference models.
+This crate aims to provide a set of complete set of optimisation algorithms for use with candle.
+This will allow Rust to be used for the training of models more easily.
 
 # Features
 
 This library implements the following optimisation algorithms:
 
-* SGD
+* SGD (including momentum and Nesterov momentum (@nmomentum))
 
-* RMSprop
+* RMSprop (@rmsprop)
 
-* AdaDelta
+* AdaDelta (@adadelta)
 
-* AdaGrad
+* AdaGrad (@adagrad)
 
-* AdaMax
+* AdaMax (@adam)
 
-* Adam
+* Adam (@adam) including AMSGrad (@amsgrad)
 
-* AdamW (as decoupled weight decay of Adam)
+* AdamW (@weightdecay) (as decoupled weight decay of Adam)
 
-* NAdam
+* NAdam (@nadam)
 
-* RAdam
+* RAdam (@radam)
 
-* RMSProp
+* RMSProp (@rmsprop)
 
-* LBFGS
+* LBFGS (@LBFGS)
 
-Furthermore, decoupled weight decay [Decoupled Weight Decay Regularization](https://arxiv.org/pdf/1711.05101.pdf) is implemented for all of the adaptive methods listed and SGD,
+Furthermore, decoupled weight decay (@weightdecay) is implemented for all of the adaptive methods listed and SGD,
 allowing for use of the method beyond solely AdamW.
 
 # References
