@@ -1,9 +1,3 @@
-//! The RMS prop algorithm
-//!
-//! Described in <https://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf>
-//!
-//! For pseudocde see <https://pytorch.org/docs/stable/generated/torch.optim.RMSprop.html#torch.optim.RMSprop>
-
 /*!
 RMS prop algorithm
 

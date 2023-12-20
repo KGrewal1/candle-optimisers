@@ -1,10 +1,34 @@
-//! Limited memory Broyden–Fletcher–Goldfarb–Shanno algorithm
-//!
-//! A pseudo second order optimiser based on the BFGS method.
-//!
-//! Described in [On the limited memory BFGS method for large scale optimization](https://link.springer.com/article/10.1007/BF01589116)
-//!
-//! <https://sagecal.sourceforge.net/pytorch/index.html>
+/*!
+
+Limited memory Broyden–Fletcher–Goldfarb–Shanno algorithm
+
+A pseudo second order optimiser based on the BFGS method.
+
+Described in [On the limited memory BFGS method for large scale optimization](https://link.springer.com/article/10.1007/BF01589116)
+
+For a history of size $n$, assume we have stored the last $n$ updates in form $s_{k} = x_{k+1} - x_{k}$ and $y_{k} = g_{k+1}-g_{k}$ where $g_{k} = \\nabla f(x_{k})$.
+We use a two loop recursion method to compute the direction of descent:
+
+$$
+\\begin{aligned}
+    &q = g_k\\\\
+    &// \\texttt{ Iterate over history from newest to oldest}\\\\
+    &\\mathbf{For}\\ i=k-1 \\: \\mathbf{to}\\: k-n \\: \\mathbf{do}\\\\
+    &\\hspace{5mm}\\rho_{i} = \\frac{1}{y_{i}^{\\top} s_{i}} \\\\
+    &\\hspace{5mm} \\alpha_i = \\rho_i s^\\top_i q\\\\
+    &\\hspace{5mm} q = q - \\alpha_i y_i\\\\
+    &\\gamma_k = \\frac{s_{k - 1}^{\\top} y_{k - 1}}{y_{k - 1}^{\\top} y_{k - 1}} \\\\
+    &q = \\gamma_{k} q\\\\
+    &// \\texttt{ Iterate over history from oldest to newest}\\\\
+    &\\mathbf{For}\\ i=k-n \\: \\mathbf{to}\\: k-1 \\: \\mathbf{do}\\\\
+    &\\hspace{5mm} \\beta_i = \\rho_i y^\\top_i q\\\\
+    &\\hspace{5mm} q = q + s_i (\\alpha_i - \\beta_i)\\\\
+    &q = -q
+\\end{aligned}
+$$
+*/
+
+//<https://sagecal.sourceforge.net/pytorch/index.html> possible extensions
 
 use crate::{LossOptimizer, Model, ModelOutcome};
 use candle_core::Result as CResult;
@@ -23,15 +47,15 @@ pub enum LineSearch {
     /// strong wolfe line search: c1, c2, tolerance
     /// suggested vals for c1 and c2: 1e-4, 0.9, for tolerance 1e-9
     ///
-    /// Ensures the Strong Wolfe conditions are met for step size $t$ in direction $\bm{d}$:
+    /// Ensures the Strong Wolfe conditions are met for step size $t$ in direction $\\bm{d}$:
     ///
     /// Armijo rule:
-    /// $$ f(x + t \bm{d}) \leq f(x) + c_1 t \bm{d}^T \nabla f(x)  $$
+    /// $$ f(x + t \\bm{d}) \\leq f(x) + c_1 t \\bm{d}^T \\nabla f(x)  $$
     ///
     /// and
     ///
     ///  Strong Curvature Condition:
-    /// $$ |\bm{d}^{T} \nabla f(x + t \bm{d})| \leq c_{2} |\bm{d}^{T} \nabla f(x)| $$
+    /// $$ |\\bm{d}^{T} \\nabla f(x + t \\bm{d})| \\leq c_{2} |\\bm{d}^{T} \\nabla f(x)| $$
     StrongWolfe(f64, f64, f64),
 }
 
