@@ -529,6 +529,7 @@ impl RMSprop {
     }
 
     /// get the current parameters of the Optimiser
+    #[must_use]
     pub fn params(&self) -> &ParamsRMSprop {
         &self.params
     }
@@ -602,6 +603,20 @@ mod tests {
         let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsRMSprop {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let optim = RMSprop::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_eq!(params, optim.params().clone());
         Ok(())
     }
 }

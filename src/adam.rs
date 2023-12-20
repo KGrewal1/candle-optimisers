@@ -403,12 +403,12 @@ impl OptimParams for Adam {
     /// this variable cannot be changed once set initally on creation of the optimiser.
     fn set_params(&mut self, config: Self::Config) {
         let ams_grad = self.params.amsgrad;
-        if ams_grad != config.amsgrad {
+        if ams_grad == config.amsgrad {
+            self.params = config;
+        } else {
             warn!("AMSGrad cannot be changed once set");
             let mut config = config;
             config.amsgrad = ams_grad;
-            self.params = config;
-        } else {
             self.params = config;
         }
     }
@@ -478,6 +478,35 @@ mod tests {
         let inner = n_sgd.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsAdam {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let mut optim = Adam::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_eq!(params, optim.params().clone());
+        let new_params = ParamsAdam {
+            lr: 0.002,
+            ..Default::default()
+        };
+        optim.set_params(new_params.clone());
+        assert_eq!(new_params, optim.params().clone());
+
+        let ams_params = ParamsAdam {
+            lr: 0.002,
+            amsgrad: true,
+            ..Default::default()
+        };
+        optim.set_params(ams_params);
+        // amsgrad cannot be changed once set
+        assert_eq!(new_params, optim.params().clone());
         Ok(())
     }
 }

@@ -242,4 +242,24 @@ mod tests {
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
         Ok(())
     }
+
+    #[test]
+    fn params_test() -> Result<()> {
+        let params = ParamsAdaMax {
+            lr: 0.004,
+            ..Default::default()
+        };
+        // Now use backprop to run a linear regression between samples and get the coefficients back.
+        let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
+        let b = Var::new(0f32, &Device::Cpu)?;
+        let mut optim = Adamax::new(vec![w.clone(), b.clone()], params.clone())?;
+        assert_eq!(params, optim.params().clone());
+        let new_params = ParamsAdaMax {
+            lr: 0.002,
+            ..Default::default()
+        };
+        optim.set_params(new_params.clone());
+        assert_eq!(new_params, optim.params().clone());
+        Ok(())
+    }
 }

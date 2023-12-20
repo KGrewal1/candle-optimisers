@@ -253,9 +253,13 @@ mod tests {
         let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
         let b = Var::new(0f32, &Device::Cpu)?;
         let mut optim = Adadelta::new(vec![w.clone(), b.clone()], params.clone())?;
-        assert_approx_eq!(0.004, optim.learning_rate());
-        optim.set_learning_rate(0.002);
-        assert_approx_eq!(0.002, optim.learning_rate());
+        assert_eq!(params, optim.params().clone());
+        let new_params = ParamsAdaDelta {
+            lr: 0.002,
+            ..Default::default()
+        };
+        optim.set_params(new_params.clone());
+        assert_eq!(new_params, optim.params().clone());
         Ok(())
     }
 }
