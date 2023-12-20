@@ -224,10 +224,10 @@ mod tests {
         // Now use backprop to run a linear regression between samples and get the coefficients back.
         let w = Var::new(&[[0f32, 0.]], &Device::Cpu)?;
         let b = Var::new(0f32, &Device::Cpu)?;
-        let mut n_sgd = Adadelta::new(vec![w.clone(), b.clone()], params)?;
-        assert_approx_eq!(0.004, n_sgd.learning_rate());
-        n_sgd.set_learning_rate(0.002);
-        assert_approx_eq!(0.002, n_sgd.learning_rate());
+        let mut optim = Adadelta::new(vec![w.clone(), b.clone()], params)?;
+        assert_approx_eq!(0.004, optim.learning_rate());
+        optim.set_learning_rate(0.002);
+        assert_approx_eq!(0.002, optim.learning_rate());
         Ok(())
     }
 
@@ -236,8 +236,8 @@ mod tests {
         let params = ParamsAdaDelta::default();
         let w = Var::new(&[[3f32, 1.]], &Device::Cpu)?;
         let b = Var::new(-2f32, &Device::Cpu)?;
-        let n_sgd = Adadelta::new(vec![w.clone(), b.clone()], params)?;
-        let inner = n_sgd.into_inner();
+        let optim = Adadelta::new(vec![w.clone(), b.clone()], params)?;
+        let inner = optim.into_inner();
         assert_eq!(inner[0].as_tensor().to_vec2::<f32>()?, &[[3f32, 1.]]);
         assert_approx_eq!(inner[1].as_tensor().to_vec0::<f32>()?, -2_f32);
         Ok(())
