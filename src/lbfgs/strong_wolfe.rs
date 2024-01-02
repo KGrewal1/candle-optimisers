@@ -3,7 +3,7 @@ use candle_core::{Tensor, Var};
 
 use crate::Model;
 
-use super::Lbfgs;
+use super::{add_grad, flat_grads, set_vs, Lbfgs};
 
 /// ported from pytorch torch/optim/lbfgs.py ported from <https://github.com/torch/optim/blob/master/polyinterp.lua>
 fn cubic_interpolate(
@@ -364,5 +364,27 @@ impl<M: Model> Lbfgs<M> {
         } else {
             Ok((f0.into_inner(), g0.into_inner(), step_size, ls_func_evals))
         }
+    }
+}
+
+impl<M: Model> Lbfgs<M> {
+    fn directional_evaluate(&mut self, mag: f64, direction: &Tensor) -> CResult<(Tensor, Tensor)> {
+        // need to cache the original result
+        // Otherwise leads to drift over line search evals
+        let original = self
+            .vars
+            .iter()
+            .map(|v| v.as_tensor().copy())
+            .collect::<CResult<Vec<Tensor>>>()?;
+
+        add_grad(&mut self.vars, &(mag * direction)?)?;
+        let loss = self.model.loss()?;
+        let grad = flat_grads(&self.vars, &loss, self.params.weight_decay)?;
+        set_vs(&mut self.vars, &original)?;
+        // add_grad(&mut self.vars, &(-mag * direction)?)?;
+        Ok((
+            loss, //.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?
+            grad,
+        ))
     }
 }

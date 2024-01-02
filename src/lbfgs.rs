@@ -476,28 +476,6 @@ fn set_vs(vs: &mut [Var], vals: &Vec<Tensor>) -> CResult<()> {
     Ok(())
 }
 
-impl<M: Model> Lbfgs<M> {
-    fn directional_evaluate(&mut self, mag: f64, direction: &Tensor) -> CResult<(Tensor, Tensor)> {
-        // need to cache the original result
-        // Otherwise leads to drift over line search evals
-        let original = self
-            .vars
-            .iter()
-            .map(|v| v.as_tensor().copy())
-            .collect::<CResult<Vec<Tensor>>>()?;
-
-        add_grad(&mut self.vars, &(mag * direction)?)?;
-        let loss = self.model.loss()?;
-        let grad = flat_grads(&self.vars, &loss, self.params.weight_decay)?;
-        set_vs(&mut self.vars, &original)?;
-        // add_grad(&mut self.vars, &(-mag * direction)?)?;
-        Ok((
-            loss, //.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?
-            grad,
-        ))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     // use candle_core::test_utils::{to_vec0_round, to_vec2_round};
