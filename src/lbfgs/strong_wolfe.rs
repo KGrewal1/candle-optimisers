@@ -351,9 +351,7 @@ impl<M: Model> Lbfgs<M> {
             Ok((f0.into_inner(), g0.into_inner(), step_size, ls_func_evals))
         }
     }
-}
 
-impl<M: Model> Lbfgs<M> {
     fn directional_evaluate(&mut self, mag: f64, direction: &Tensor) -> CResult<(Tensor, Tensor)> {
         // need to cache the original result
         // Otherwise leads to drift over line search evals
