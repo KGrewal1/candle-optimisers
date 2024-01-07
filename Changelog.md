@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.2 (2024-01-02)
+
+* move directional evaluation into stronge wolfe
+* fix strong wolfe condition when used with weight decay
+
 ## v0.3.1 (2023-12-20)
 
 * Improved Documentation

@@ -402,11 +402,11 @@ impl<M: Model> Lbfgs<M> {
                     .vars
                     .iter()
                     .map(|v| -> CResult<f64> {
-                        Ok(v.as_tensor()
+                        v.as_tensor()
                             .sqr()?
                             .sum_all()?
                             .to_dtype(candle_core::DType::F64)?
-                            .to_scalar::<f64>()?)
+                            .to_scalar::<f64>()
                     })
                     .sum::<CResult<f64>>()?
         } else {
@@ -429,11 +429,11 @@ impl<M: Model> Lbfgs<M> {
                     .vars
                     .iter()
                     .map(|v| -> CResult<f64> {
-                        Ok(v.as_tensor()
+                        v.as_tensor()
                             .sqr()?
                             .sum_all()?
                             .to_dtype(candle_core::DType::F64)?
-                            .to_scalar::<f64>()?)
+                            .to_scalar::<f64>()
                     })
                     .sum::<CResult<f64>>()?)
         } else {
