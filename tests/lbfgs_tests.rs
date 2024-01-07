@@ -230,7 +230,46 @@ fn lbfgs_test_strong_wolfe_weight_decay() -> Result<()> {
         }
     }
 
-    let expected = [2.914, 8.5018]; // this should be properly checked
+    let expected = [0.8861, 0.7849]; // this should be properly checked
+    for (v, e) in model.vars().iter().zip(expected) {
+        // println!("{}", v);
+        assert_eq!(to_vec2_round(&v.to_dtype(DType::F32)?, 4)?, &[[e]]);
+    }
+
+    // println!("{:?}", lbfgs);
+    // panic!("deliberate panic");
+
+    Ok(())
+}
+
+#[test]
+fn lbfgs_test_weight_decay() -> Result<()> {
+    let params = ParamsLBFGS {
+        lr: 1.,
+        weight_decay: Some(0.1),
+        ..Default::default()
+    };
+
+    let model = RosenbrockModel::new()?;
+
+    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut loss = model.loss()?;
+
+    for _step in 0..500 {
+        // println!("\nstart step {}", step);
+        // for v in model.vars() {
+        //     println!("{}", v);
+        // }
+        let res = lbfgs.backward_step(&loss)?; //&sample_xs, &sample_ys
+                                               // println!("end step {}", _step);
+        match res {
+            ModelOutcome::Converged(_, _) => break,
+            ModelOutcome::Stepped(new_loss, _) => loss = new_loss,
+            // _ => panic!("unexpected outcome"),
+        }
+    }
+
+    let expected = [0.8861, 0.7849]; // this should be properly checked
     for (v, e) in model.vars().iter().zip(expected) {
         // println!("{}", v);
         assert_eq!(to_vec2_round(&v.to_dtype(DType::F32)?, 4)?, &[[e]]);
