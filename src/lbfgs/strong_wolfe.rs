@@ -83,7 +83,7 @@ impl<M: Model> Lbfgs<M> {
         max_ls: usize,         // maximum number of iterations
     ) -> CResult<(Tensor, Tensor, f64, usize)> {
         // ported from https://github.com/torch/optim/blob/master/lswolfe.lua
-        // let x = &self.vars;
+
         let d_norm = &direction
             .abs()?
             .max(0)?
@@ -91,7 +91,7 @@ impl<M: Model> Lbfgs<M> {
             .to_scalar::<f64>()?;
 
         // evaluate objective and gradient using initial step
-        let (f_new, g_new) = self.directional_evaluate(step_size, direction)?; //obj_func(x, t, &d);
+        let (f_new, g_new) = self.directional_evaluate(step_size, direction)?;
         let g_new = Var::from_tensor(&g_new)?;
         let f_new = Var::from_tensor(&f_new)?;
         let mut ls_func_evals = 1;
@@ -111,9 +111,8 @@ impl<M: Model> Lbfgs<M> {
         let mut ls_iter = 0;
 
         let mut bracket_gtd;
-        let bracket_f; // bracket_f,
+        let bracket_f;
         let (mut bracket, bracket_g) = loop {
-            //while ls_iter < max_ls
             // check conditions
             if f_new
                 .to_dtype(candle_core::DType::F64)?
@@ -129,10 +128,9 @@ impl<M: Model> Lbfgs<M> {
                             .to_scalar::<f64>()?)
             {
                 bracket_gtd = [gtd_prev, gtd_new];
-                bracket_f = [f_prev, Var::from_tensor(f_new.as_tensor())?]; //.clone()
+                bracket_f = [f_prev, Var::from_tensor(f_new.as_tensor())?];
                 break (
                     [t_prev, step_size],
-                    //[f_prev, f_new.clone()],
                     [g_prev, Var::from_tensor(g_new.as_tensor())?],
                 );
             }
@@ -143,10 +141,9 @@ impl<M: Model> Lbfgs<M> {
                 bracket_f = [
                     Var::from_tensor(f_new.as_tensor())?,
                     Var::from_tensor(f_new.as_tensor())?,
-                ]; //.clone()
+                ];
                 break (
                     [step_size, step_size],
-                    // [f_new.clone(), f_new.clone()],
                     [
                         Var::from_tensor(g_new.as_tensor())?,
                         Var::from_tensor(g_new.as_tensor())?,
@@ -159,7 +156,6 @@ impl<M: Model> Lbfgs<M> {
                 bracket_f = [f_prev, Var::from_tensor(f_new.as_tensor())?];
                 break (
                     [t_prev, step_size],
-                    // [f_prev, f_new.clone()],
                     [g_prev, Var::from_tensor(g_new.as_tensor())?],
                 );
             }
@@ -187,12 +183,12 @@ impl<M: Model> Lbfgs<M> {
             f_prev.set(f_new.as_tensor())?;
             g_prev.set(g_new.as_tensor())?;
             gtd_prev = gtd_new;
-            // assign to temp vars: (f_new, g_new) = obj_func(&x, t, &d);
+            // assign to temp vars:
             let (next_f, next_g) = self.directional_evaluate(step_size, direction)?;
             // overwrite
             f_new.set(&next_f)?;
             g_new.set(&next_g)?;
-            //
+
             ls_func_evals += 1;
 
             gtd_new = g_new
@@ -210,10 +206,9 @@ impl<M: Model> Lbfgs<M> {
                 bracket_f = [
                     Var::from_tensor(loss)?,
                     Var::from_tensor(f_new.as_tensor())?,
-                ]; //.clone()
+                ];
                 break (
                     [0., step_size],
-                    // [Var::from_tensor(loss)?, f_new.clone()],
                     [
                         Var::from_tensor(grad)?,
                         Var::from_tensor(g_new.as_tensor())?,
@@ -353,9 +348,6 @@ impl<M: Model> Lbfgs<M> {
 
         // return new value, new grad, line-search value, nb of function evals
         step_size = bracket[low_pos];
-        // f_new = bracket_f[low_pos];
-        // g_new = ;
-        // f_new, g_new, t, ls_func_evals;
         let [g0, g1] = bracket_g;
         let [f0, f1] = bracket_f;
         if low_pos == 1 {
