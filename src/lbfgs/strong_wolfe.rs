@@ -117,15 +117,9 @@ impl<M: Model> Lbfgs<M> {
             if f_new
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?
-                > (loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?
-                    + c1 * step_size * directional_grad)
-                || (ls_iter > 1
-                    && f_new
-                        .to_dtype(candle_core::DType::F64)?
-                        .to_scalar::<f64>()?
-                        >= f_prev
-                            .to_dtype(candle_core::DType::F64)?
-                            .to_scalar::<f64>()?)
+                >= f_prev
+                    .to_dtype(candle_core::DType::F64)?
+                    .to_scalar::<f64>()?
             {
                 bracket_gtd = [gtd_prev, gtd_new];
                 bracket_f = [f_prev, Var::from_tensor(f_new.as_tensor())?];
@@ -282,7 +276,7 @@ impl<M: Model> Lbfgs<M> {
             }
 
             // Evaluate new point
-            // assign to temp vars: (f_new, g_new) = obj_func(&x, t, &d);
+            // assign to temp vars:
             let (next_f, next_g) = self.directional_evaluate(step_size, direction)?;
             // overwrite
             f_new.set(&next_f)?;
