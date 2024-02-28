@@ -1,9 +1,3 @@
-#[cfg(feature = "mkl")]
-extern crate intel_mkl_src;
-
-#[cfg(feature = "accelerate")]
-extern crate accelerate_src;
-
 use candle_core::test_utils::{to_vec0_round, to_vec2_round};
 
 use anyhow::Result;
