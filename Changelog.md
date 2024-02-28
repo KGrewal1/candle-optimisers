@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.0 (2024-02-28)
+
+* Bump candle requirtement to 0.4.0: this is considered a breaking change due to the reliance of this library on candle-core and candle-nn
+* Remove intel-mkl feature: features in this library are mainly used for running examples: any code that uses this library should instead use the features directly from the candle crates
+
 ## v0.3.2 (2024-01-07)
 
 * move directional evaluation into stronge wolfe
