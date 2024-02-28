@@ -17,15 +17,15 @@ exclude = [
 
 [dependencies]
 
-candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
-candle-nn = { git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
+candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
+candle-nn = { git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
 log = "0.4.20"
 
 
 [dev-dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
-candle-datasets ={ git = "https://github.com/huggingface/candle.git", version = "0.3.0"}
+candle-datasets ={ git = "https://github.com/huggingface/candle.git", version = "0.4.0"}
 clap = {version = "4.4.6", features = ["derive"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
