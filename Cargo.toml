@@ -1,6 +1,6 @@
 [package]
 name = "candle-optimisers"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
