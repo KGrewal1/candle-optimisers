@@ -34,8 +34,6 @@ This library implements the following optimisation algorithms:
 
 * SGD (including momentum and Nesterov momentum (@nmomentum))
 
-* RMSprop (@rmsprop)
-
 * AdaDelta (@adadelta)
 
 * AdaGrad (@adagrad)
