@@ -41,12 +41,12 @@ cuda = ["candle-core/cuda", "candle-nn/cuda"]
 lto = true # maximal LTO optimisaiton
 
 [lints.clippy]
-pedantic = "warn"
-suspicious = "warn"
-perf = "warn"
-complexity = "warn"
-style = "warn"
-cargo = "warn"
+pedantic = {level =  "warn", priority = -1}
+suspicious = {level =  "warn", priority = -1}
+perf = {level =  "warn", priority = -1}
+complexity = {level =  "warn", priority = -1}
+style = {level =  "warn", priority = -1}
+cargo = {level =  "warn", priority = -1}
 imprecise_flops = "warn"
 missing_errors_doc = {level =  "allow", priority = 1}
 uninlined_format_args = {level =  "allow", priority = 1}
