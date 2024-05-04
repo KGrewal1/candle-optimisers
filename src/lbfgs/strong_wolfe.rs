@@ -334,14 +334,14 @@ impl<M: Model> Lbfgs<M> {
         if low_pos == 1 {
             // if b is the lower value set a to b, else a should be returned
             Ok((
-                Tensor::from_slice(&[f1], shape, &dev)?.to_dtype(dtype)?,
+                Tensor::from_slice(&[f1], shape, dev)?.to_dtype(dtype)?,
                 g1.into_inner(),
                 step_size,
                 ls_func_evals,
             ))
         } else {
             Ok((
-                Tensor::from_slice(&[f0], shape, &dev)?.to_dtype(dtype)?,
+                Tensor::from_slice(&[f0], shape, dev)?.to_dtype(dtype)?,
                 g0.into_inner(),
                 step_size,
                 ls_func_evals,
