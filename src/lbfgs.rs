@@ -153,7 +153,7 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         let mut evals = 1;
 
         let grad = if let Some(this_grad) = &self.next_grad {
-            this_grad.as_tensor().clone()
+            this_grad.as_tensor().copy()?
         } else {
             flat_grads(&self.vars, loss, self.params.weight_decay)?
         };
@@ -302,10 +302,8 @@ impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
         if let Some(ls) = &self.params.line_search {
             match ls {
                 LineSearch::StrongWolfe(c1, c2, tol) => {
-                    let (loss, grad, t, steps) = self.strong_wolfe(
-                        lr, &q, loss, //.to_dtype(candle_core::DType::F64)?.to_scalar()?
-                        &grad, dd, *c1, *c2, *tol, 25,
-                    )?;
+                    let (loss, grad, t, steps) =
+                        self.strong_wolfe(lr, &q, loss, &grad, dd, *c1, *c2, *tol, 25)?;
                     if let Some(next_grad) = &self.next_grad {
                         next_grad.set(&grad)?;
                     } else {

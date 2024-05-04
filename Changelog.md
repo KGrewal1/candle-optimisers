@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.0 (2024-02-28)
+
+* Bump candle requirtement to 0.5.0: this is considered a breaking change due to the reliance of this library on candle-core and candle-nn
+* Internal changes for LBFGS line search
+
 ## v0.4.0 (2024-02-28)
 
 * Bump candle requirtement to 0.4.0: this is considered a breaking change due to the reliance of this library on candle-core and candle-nn
