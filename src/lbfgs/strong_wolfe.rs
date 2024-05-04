@@ -83,6 +83,10 @@ impl<M: Model> Lbfgs<M> {
     ) -> CResult<(Tensor, Tensor, f64, usize)> {
         // ported from https://github.com/torch/optim/blob/master/lswolfe.lua
 
+        let dtype = loss.dtype();
+        let shape = loss.shape();
+        let dev = loss.device();
+
         let d_norm = &direction
             .abs()?
             .max(0)?
@@ -105,11 +109,10 @@ impl<M: Model> Lbfgs<M> {
             .to_scalar::<f64>()?;
 
         // bracket an interval containing a point satisfying the Wolfe criteria
-        let g_prev = Var::from_tensor(grad)?;
-        let dtype = loss.dtype();
-        let shape = loss.shape();
-        let dev = loss.device();
-        let mut f_prev = loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?;
+        let grad_det = grad.copy()?;
+        let g_prev = Var::from_tensor(&grad_det)?;
+        let scalar_loss = loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?;
+        let mut f_prev = scalar_loss;
         let l2_init = self.l2_reg()?;
         let mut l2_prev = l2_init;
         let (mut t_prev, mut gtd_prev) = (0., directional_grad);
@@ -139,7 +142,7 @@ impl<M: Model> Lbfgs<M> {
                 break (
                     [step_size, step_size],
                     [
-                        Var::from_tensor(g_new.as_tensor())?,
+                        Var::from_tensor(&g_new.as_tensor().copy()?)?,
                         Var::from_tensor(g_new.as_tensor())?,
                     ],
                 );
@@ -200,10 +203,7 @@ impl<M: Model> Lbfgs<M> {
             if ls_iter == max_ls {
                 bracket_gtd = [gtd_prev, gtd_new];
                 bracket_l2 = [l2_prev, l2_new];
-                bracket_f = [
-                    loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?,
-                    f_new,
-                ];
+                bracket_f = [scalar_loss, f_new];
                 break (
                     [0., step_size],
                     [
@@ -276,11 +276,11 @@ impl<M: Model> Lbfgs<M> {
             f_new = next_f
                 .to_dtype(candle_core::DType::F64)?
                 .to_scalar::<f64>()?;
-            g_new.set(&next_g)?;
+
             l2_new = next_l2;
             ls_func_evals += 1;
 
-            gtd_new = g_new
+            gtd_new = next_g
                 .unsqueeze(0)?
                 .matmul(&(direction.unsqueeze(1)?))?
                 .to_dtype(candle_core::DType::F64)?
@@ -289,16 +289,13 @@ impl<M: Model> Lbfgs<M> {
                 .to_scalar::<f64>()?;
             ls_iter += 1;
 
-            if f_new + l2_new
-                > (loss.to_dtype(candle_core::DType::F64)?.to_scalar::<f64>()?
-                    + l2_init
-                    + c1 * step_size * directional_grad)
+            if f_new + l2_new > (scalar_loss + l2_init + c1 * step_size * directional_grad)
                 || f_new + l2_new >= bracket_f[low_pos] + bracket_l2[low_pos]
             {
                 // Armijo condition not satisfied or not lower than lowest point
                 bracket[high_pos] = step_size;
                 bracket_f[high_pos] = f_new;
-                let _ = bracket_g[high_pos].set(g_new.as_tensor());
+                bracket_g[high_pos].set(&next_g)?;
                 bracket_l2[high_pos] = l2_new;
                 bracket_gtd[high_pos] = gtd_new;
 
@@ -324,7 +321,7 @@ impl<M: Model> Lbfgs<M> {
                 // new point becomes new low
                 bracket[low_pos] = step_size;
                 bracket_f[low_pos] = f_new;
-                bracket_g[low_pos].set(g_new.as_tensor())?;
+                bracket_g[low_pos].set(&next_g)?;
                 bracket_gtd[low_pos] = gtd_new;
                 bracket_l2[low_pos] = l2_new;
             }
