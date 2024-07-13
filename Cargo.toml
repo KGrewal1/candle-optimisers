@@ -8,25 +8,23 @@ keywords = ["optimisers", "candle", "tensor", "machine-learning"]
 categories = ["science", "machine-learning", "optimisation"]
 description = "Optimisers for use with candle, the minimalist ML framework"
 repository = "https://github.com/KGrewal1/optimisers"
-exclude = [
-    "*.ipynb"
-]
+exclude = ["*.ipynb"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
-candle-core =   "0.5.0"
-candle-nn = "0.5.0"
+candle-core = "0.6.0"
+candle-nn = "0.6.0"
 log = "0.4.20"
 
 
 [dev-dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
-candle-datasets = "0.5.0"
-clap = {version = "4.4.6", features = ["derive"] }
+candle-datasets = "0.6.0"
+clap = { version = "4.4.6", features = ["derive"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
 [[bench]]
@@ -41,18 +39,19 @@ cuda = ["candle-core/cuda", "candle-nn/cuda"]
 lto = true # maximal LTO optimisaiton
 
 [lints.clippy]
-pedantic = {level =  "warn", priority = -1}
-suspicious = {level =  "warn", priority = -1}
-perf = {level =  "warn", priority = -1}
-complexity = {level =  "warn", priority = -1}
-style = {level =  "warn", priority = -1}
-cargo = {level =  "warn", priority = -1}
+pedantic = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
 imprecise_flops = "warn"
-missing_errors_doc = {level =  "allow", priority = 1}
-uninlined_format_args = {level =  "allow", priority = 1}
-similar_names = {level =  "allow", priority = 1}
-float_cmp = {level =  "allow", priority = 1} # as internaly rounded before the comparison
-doc_markdown= {level =  "allow", priority = 1} # otherwise names get flagged
+missing_errors_doc = { level = "allow", priority = 1 }
+uninlined_format_args = { level = "allow", priority = 1 }
+similar_names = { level = "allow", priority = 1 }
+float_cmp = { level = "allow", priority = 1 }               # as internaly rounded before the comparison
+doc_markdown = { level = "allow", priority = 1 }            # otherwise names get flagged
+multiple_crate_versions = { level = "allow", priority = 1 } # for candle dep graph
 
 [package.metadata.docs.rs]
-rustdoc-args = [ "--html-in-header", "./katex-header.html" ]
+rustdoc-args = ["--html-in-header", "./katex-header.html"]
