@@ -13,14 +13,12 @@ jobs:
   coverage:
     name: Code coverage
     runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin
-      options: --security-opt seccomp=unconfined
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Generate code coverage
-        run: |
+        uses: dtolnay/rust-toolchain@stable
+      - run: |
           cargo tarpaulin --verbose --exclude-files benches/* --out xml
       - name:                   Upload to codecov.io
         uses:                   codecov/codecov-action@v3
