@@ -66,11 +66,3 @@ cargo add --git https://github.com/KGrewal1/optimisers.git candle-optimisers
 ## Documentation
 
 Documentation is available on the rust docs site <https://docs.rs/candle-optimisers>
-
-## Notes
-
-For development, to track state of pytorch methods , use:
-
-```python
-print(optimiser.state)
-```
