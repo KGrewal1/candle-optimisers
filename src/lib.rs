@@ -1,6 +1,86 @@
 /*!
-Optimisers for use with the candle framework for lightweight machine learning.
+Optimisers for use with the [candle](https://github.com/huggingface/candle) framework for lightweight machine learning.
 Apart from LBFGS, these all implement the [`candle_nn::optim::Optimizer`] trait from candle-nn
+
+# Example
+
+Training an MNIST model using the Adam optimiser
+
+```
+# use candle_core::{Result, Tensor};
+# use candle_core::{DType, D};
+# use candle_nn::{loss, ops, VarBuilder, VarMap, optim::Optimizer};
+# use candle_optimisers::{
+#     adam::{Adam, ParamsAdam}
+# };
+#
+# pub trait Model: Sized {
+#     fn new(vs: VarBuilder) -> Result<Self>;
+#     fn forward(&self, xs: &Tensor) -> Result<Tensor>;
+# }
+#
+# pub fn training_loop<M: Model>(
+#     m: candle_datasets::vision::Dataset,
+#     varmap: &VarMap,
+#     model: M,
+# ) -> anyhow::Result<()> {
+#     // check to see if cuda device availabke
+#     let dev = candle_core::Device::cuda_if_available(0)?;
+#     // get the input from the dataset and put on device
+#     let train_images = m.train_images.to_device(&dev)?;
+#     // get the training labels on the device
+#     let train_labels = m.train_labels.to_dtype(DType::U32)?.to_device(&dev)?;
+#
+#
+#     // load the test images
+#     let test_images = m.test_images.to_device(&dev)?;
+#     // load the test labels
+#     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
+#
+    // create the Adam optimiser
+
+    // set the learning rate to 0.004 and use the default parameters for everything else
+    let params = ParamsAdam {
+            lr: 0.004,
+            ..Default::default()
+        };
+    // create the optimiser by passing in the variable to be optimised and the parameters
+    let mut optimiser = Adam::new(varmap.all_vars(),  params)?;
+
+    // loop for model optimisation
+    for epoch in 0..100 {
+        // run the model forwards
+        // get log probabilities of results
+        let logits = model.forward(&train_images)?;
+        // softmax the log probabilities
+        let log_sm = ops::log_softmax(&logits, D::Minus1)?;
+        // get the loss
+        let loss = loss::nll(&log_sm, &train_labels)?;
+        // step the tensors by backpropagating the loss
+        optimiser.backward_step(&loss)?;
+
+        # // get the log probabilities of the test images
+        # let test_logits = model.forward(&test_images)?;
+        # // get the sum of the correct predictions
+        # let sum_ok = test_logits
+        #     .argmax(D::Minus1)?
+        #     .eq(&test_labels)?
+        #     .to_dtype(DType::F32)?
+        #     .sum_all()?
+        #     .to_scalar::<f32>()?;
+        # // get the accuracy on the test set
+        # #[allow(clippy::cast_precision_loss)]
+        # let test_accuracy = sum_ok / test_labels.dims1()? as f32;
+        # println!(
+        #     "{:4} train loss: {:8.5} test acc: {:5.2}%",
+        #     epoch + 1,
+        #     loss.to_scalar::<f32>()?,
+        #     100. * test_accuracy
+        # );
+    }
+    Ok(())
+# }
+```
 */
 
 use std::fmt::Debug;
