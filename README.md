@@ -63,20 +63,6 @@ to use the cuda backend.
 cargo add --git https://github.com/KGrewal1/optimisers.git candle-optimisers
 ```
 
-## To do
+## Documentation
 
-Currently unimplemented from pytorch:
-
-* SparseAdam (unsure how to treat sparse tensors in candle)
-
-* ASGD (no pseudocode)
-
-* Rprop (need to reformulate in terms of tensors)
-
-## Notes
-
-For development, to track state of pytorch methods, use:
-
-```python
-print(optimiser.state)
-```
+Documentation is available on the rust docs site <https://docs.rs/candle-optimisers>
