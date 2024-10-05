@@ -1,6 +1,6 @@
 [package]
 name = "candle-optimisers"
-version = "0.6.0"
+version = "0.7.2"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
@@ -15,15 +15,15 @@ exclude = ["*.ipynb"]
 
 [dependencies]
 
-candle-core = "0.6.0"
-candle-nn = "0.6.0"
+candle-core = "0.7.2"
+candle-nn = "0.7.2"
 log = "0.4.20"
 
 
 [dev-dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
-candle-datasets = "0.6.0"
+candle-datasets = "0.7.2"
 clap = { version = "4.4.6", features = ["derive"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
