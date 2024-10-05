@@ -16,10 +16,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Generate code coverage
+      - name: Setup tools
         uses: dtolnay/rust-toolchain@stable
-      - run: cargo clean && cargo install cargo-tarpaulin
-      - run: cargo tarpaulin --verbose --exclude-files benches/* --out xml
+      - name: Install binstall
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+      - name: Install cargo-tarpaulin
+        run: cargo clean && cargo binstall cargo-tarpaulin
+      - name: Run tests with coverage
+        run: cargo tarpaulin --verbose --exclude-files benches/* --out xml
       - name:                   Upload to codecov.io
         uses:                   codecov/codecov-action@v3
         with:
