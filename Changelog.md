@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.9.0 (2024-11-18)
+
+* Bump candle requirtement to 0.9.0: this is considered a breaking change due to the reliance of this library on candle-core and candle-nn
+
 ## v0.8.0 (2024-11-18)
 
 * Bump candle requirtement to 0.8.0: this is considered a breaking change due to the reliance of this library on candle-core and candle-nn
