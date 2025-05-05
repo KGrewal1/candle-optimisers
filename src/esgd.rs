@@ -132,7 +132,7 @@ impl Optimizer for SGD {
                                             theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                                             // println!("Momentum {}", bt);
                                             var.b = Some(Var::from_tensor(&bt)?);
-                                        };
+                                        }
                                     }
                                 }
                             }
@@ -166,7 +166,7 @@ impl Optimizer for SGD {
                                             theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                                             // println!("Momentum {}", bt);
                                             var.b = Some(Var::from_tensor(&bt)?);
-                                        };
+                                        }
                                     }
                                 }
                             }
@@ -196,7 +196,7 @@ impl Optimizer for SGD {
                                     theta.set(&theta.sub(&(&bt * self.params.lr)?)?)?;
                                     // println!("Momentum {}", bt);
                                     var.b = Some(Var::from_tensor(&bt)?);
-                                };
+                                }
                             }
                         }
                     }
@@ -230,7 +230,7 @@ impl Optimizer for SGD {
                                             // println!("Momentum {}", bt);
                                             var.b = Some(Var::from_tensor(&bt)?);
                                             theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
-                                        };
+                                        }
                                     }
                                 }
                             }
@@ -264,7 +264,7 @@ impl Optimizer for SGD {
                                             // println!("Momentum {}", bt);
                                             var.b = Some(Var::from_tensor(&bt)?);
                                             theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
-                                        };
+                                        }
                                     }
                                 }
                             }
@@ -294,7 +294,7 @@ impl Optimizer for SGD {
                                     // println!("Momentum {}", bt);
                                     var.b = Some(Var::from_tensor(&bt)?);
                                     theta.set(&theta.sub(&(gt * self.params.lr)?)?)?;
-                                };
+                                }
                             }
                         }
                     }
