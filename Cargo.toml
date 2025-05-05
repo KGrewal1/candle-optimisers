@@ -15,7 +15,7 @@ exclude = ["*.ipynb"]
 
 [dependencies]
 
-candle-core = "0.8.0"
+candle-core = "0.9.1"
 candle-nn = "0.8.0"
 log = "0.4.20"
 
