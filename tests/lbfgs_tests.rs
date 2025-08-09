@@ -51,7 +51,7 @@ fn lbfgs_test() -> Result<()> {
 
     let model = RosenbrockModel::new()?;
 
-    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut lbfgs = Lbfgs::new(model.vars(), params, &model)?;
     let mut loss = model.loss()?;
 
     for _step in 0..500 {
@@ -89,7 +89,7 @@ fn lbfgs_test_strong_wolfe() -> Result<()> {
 
     let model = RosenbrockModel::new()?;
 
-    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut lbfgs = Lbfgs::new(model.vars(), params, &model)?;
     let mut loss = model.loss()?;
 
     for _step in 0..500 {
@@ -127,7 +127,7 @@ fn lbfgs_rms_grad_test() -> Result<()> {
 
     let model = RosenbrockModel::new()?;
 
-    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut lbfgs = Lbfgs::new(model.vars(), params, &model)?;
     let mut loss = model.loss()?;
 
     for _step in 0..500 {
@@ -166,7 +166,7 @@ fn lbfgs_rms_step_test() -> Result<()> {
 
     let model = RosenbrockModel::new()?;
 
-    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut lbfgs = Lbfgs::new(model.vars(), params, &model)?;
     let mut loss = model.loss()?;
 
     for _step in 0..500 {
@@ -205,7 +205,7 @@ fn lbfgs_test_strong_wolfe_weight_decay() -> Result<()> {
 
     let model = RosenbrockModel::new()?;
 
-    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut lbfgs = Lbfgs::new(model.vars(), params, &model)?;
     let mut loss = model.loss()?;
 
     for _step in 0..500 {
@@ -244,7 +244,7 @@ fn lbfgs_test_weight_decay() -> Result<()> {
 
     let model = RosenbrockModel::new()?;
 
-    let mut lbfgs = Lbfgs::new(model.vars(), params, model.clone())?;
+    let mut lbfgs = Lbfgs::new(model.vars(), params, &model)?;
     let mut loss = model.loss()?;
 
     for _step in 0..500 {
