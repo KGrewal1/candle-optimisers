@@ -120,9 +120,9 @@ impl Default for ParamsLBFGS {
 ///
 /// <https://sagecal.sourceforge.net/pytorch/index.html>
 #[derive(Debug)]
-pub struct Lbfgs<M: Model> {
+pub struct Lbfgs<'a, M: Model> {
     vars: Vec<Var>,
-    model: M,
+    model: &'a M,
     s_hist: VecDeque<(Tensor, Tensor)>,
     last_grad: Option<Var>,
     next_grad: Option<Var>,
@@ -131,10 +131,10 @@ pub struct Lbfgs<M: Model> {
     first: bool,
 }
 
-impl<M: Model> LossOptimizer<M> for Lbfgs<M> {
+impl<'a, M: Model> LossOptimizer<'a, M> for Lbfgs<'a, M> {
     type Config = ParamsLBFGS;
 
-    fn new(vs: Vec<Var>, params: Self::Config, model: M) -> CResult<Self> {
+    fn new(vs: Vec<Var>, params: Self::Config, model: &'a M) -> CResult<Self> {
         let hist_size = params.history_size;
         Ok(Lbfgs {
             vars: vs,
@@ -528,7 +528,7 @@ mod tests {
             ..Default::default()
         };
         let (model, vars) = LinearModel::new()?;
-        let mut lbfgs = Lbfgs::new(vars, params, model)?;
+        let mut lbfgs = Lbfgs::new(vars, params, &model)?;
         assert_approx_eq!(0.004, lbfgs.learning_rate());
         lbfgs.set_learning_rate(0.002);
         assert_approx_eq!(0.002, lbfgs.learning_rate());
@@ -545,7 +545,7 @@ mod tests {
 
         let (model, vars) = LinearModel::new()?;
         let slice: Vec<&Var> = vars.iter().collect();
-        let lbfgs = Lbfgs::from_slice(&slice, params, model)?;
+        let lbfgs = Lbfgs::from_slice(&slice, params, &model)?;
         let inner = lbfgs.into_inner();
 
         assert_eq!(inner[0].as_tensor().to_vec1::<f64>()?, &[3f64, 1.]);

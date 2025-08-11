@@ -115,11 +115,11 @@ pub trait Model: Sized {
 
 /// trait for optimisers like LBFGS that need the ability to calculate the loss
 /// and its gradient
-pub trait LossOptimizer<M: Model>: Sized {
+pub trait LossOptimizer<'a, M: Model>: Sized {
     /// type of the optimiser configuration
     type Config: Sized;
     /// create a new optimiser from a Vec of variables, setup parameters and a model
-    fn new(vs: Vec<Var>, params: Self::Config, model: M) -> CResult<Self>;
+    fn new(vs: Vec<Var>, params: Self::Config, model: &'a M) -> CResult<Self>;
     /// take a step of the optimiser
     fn backward_step(&mut self, loss: &Tensor) -> CResult<ModelOutcome>; //, xs: &Tensor, ys: &Tensor
     /// get the current learning rate
@@ -129,7 +129,7 @@ pub trait LossOptimizer<M: Model>: Sized {
     /// get the a vec of the variables being optimised
     fn into_inner(self) -> Vec<Var>;
     /// create a new optimiser from a slice of variables, setup parameters and a model
-    fn from_slice(vars: &[&Var], config: Self::Config, model: M) -> CResult<Self> {
+    fn from_slice(vars: &[&Var], config: Self::Config, model: &'a M) -> CResult<Self> {
         let vars: Vec<_> = vars.iter().map(|&v| v.clone()).collect();
         Self::new(vars, config, model)
     }

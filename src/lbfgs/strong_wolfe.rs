@@ -42,7 +42,7 @@ fn cubic_interpolate(
     }
 }
 
-impl<M: Model> Lbfgs<M> {
+impl<M: Model> Lbfgs<'_, M> {
     /// Strong Wolfe line search
     ///
     /// # Arguments
@@ -466,7 +466,7 @@ mod tests {
             ..Default::default()
         };
         let (model, vars) = LinearModel::new()?;
-        let lbfgs = Lbfgs::new(vars, params, model)?;
+        let lbfgs = Lbfgs::new(vars, params, &model)?;
         let l2 = lbfgs.l2_reg()?;
         assert_approx_eq!(0.0, l2);
 
@@ -476,7 +476,7 @@ mod tests {
             ..Default::default()
         };
         let (model, vars) = LinearModel::new()?;
-        let lbfgs = Lbfgs::new(vars, params, model)?;
+        let lbfgs = Lbfgs::new(vars, params, &model)?;
         let l2 = lbfgs.l2_reg()?;
         assert_approx_eq!(7.0, l2); // 0.5 *(3^2 +1^2 + (-2)^2)
         Ok(())

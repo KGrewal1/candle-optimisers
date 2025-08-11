@@ -207,7 +207,7 @@ pub fn run_lbfgs_training<M: SimpleModel + Model>(
     let mut loss = model.loss()?;
 
     // create an optimiser
-    let mut optimiser = Lbfgs::new(varmap.all_vars(), params, model)?;
+    let mut optimiser = Lbfgs::new(varmap.all_vars(), params, &model)?;
     // load the test images
     let _test_images = m.test_images.to_device(&dev)?;
     // load the test labels
