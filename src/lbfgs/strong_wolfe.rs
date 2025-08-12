@@ -38,7 +38,7 @@ fn cubic_interpolate(
         };
         (min_pos.max(xmin_bound)).min(xmax_bound)
     } else {
-        (xmin_bound + xmax_bound) / 2.
+        xmin_bound.midpoint(xmax_bound)
     }
 }
 
