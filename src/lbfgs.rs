@@ -420,7 +420,6 @@ impl<'a, M: Model> LossOptimizer<'a, M> for Lbfgs<'a, M> {
         self.params.lr = lr;
     }
 
-    #[must_use]
     fn into_inner(self) -> Vec<Var> {
         self.vars
     }

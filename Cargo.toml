@@ -1,6 +1,6 @@
 [package]
 name = "candle-optimisers"
-version = "0.9.0"
+version = "0.10.0-alpha.1"
 edition = "2021"
 readme = "README.md"
 license = "MIT"
@@ -25,7 +25,7 @@ anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
 candle-datasets = "0.9"
 clap = { version = "4.4.6", features = ["derive"] }
-criterion = { version = "0.5.1", features = ["html_reports"] }
+criterion = { version = "0.7.0", features = ["html_reports"] }
 
 [[bench]]
 name = "mnist_bench"
