@@ -15,15 +15,16 @@ exclude = ["*.ipynb"]
 
 [dependencies]
 
-candle-core = "0.9"
-candle-nn = "0.9"
+# Updated to git version for CUDA 13.0 support via cudarc 0.17.1+
+candle-core = { git = "https://github.com/huggingface/candle", rev = "db08cc0a5a786e00f873c35ced7db51fd7d7083a" }
+candle-nn = { git = "https://github.com/huggingface/candle", rev = "db08cc0a5a786e00f873c35ced7db51fd7d7083a" }
 log = "0.4.20"
 
 
 [dev-dependencies]
 anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
-candle-datasets = "0.9"
+candle-datasets = { git = "https://github.com/huggingface/candle", rev = "db08cc0a5a786e00f873c35ced7db51fd7d7083a" }
 clap = { version = "4.4.6", features = ["derive"] }
 criterion = { version = "0.7.0", features = ["html_reports"] }
 
