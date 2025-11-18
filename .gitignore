@@ -8,3 +8,5 @@ References.md
 pseudo/*
 paper/paper.pdf
 paper/paper.jats
+*.profraw
+.vscode/

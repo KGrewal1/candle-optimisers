@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.10.0-alpha.2 (2025-11-15)
+
+* Bump candle requirement to 0.9.2-alpha.1: this adds support for CUDA 13.0 via cudarc 0.17.1+
+* Use published alpha versions from crates.io instead of git revisions, allowing this version to be published to crates.io
+
+## v0.10.0-alpha.1 (2025-08-12)
+
+* Prerelease for candle 0.10.0 compatibility
+* Remove failing codecov
+* Clippy lints
+
 ## v0.9.0 (2024-11-18)
 
 * Bump candle requirtement to 0.9.0: this is considered a breaking change due to the reliance of this library on candle-core and candle-nn
