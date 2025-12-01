@@ -26,7 +26,7 @@ anyhow = { version = "1", features = ["backtrace"] }
 assert_approx_eq = "1.1.0"
 candle-datasets = "0.9.2-alpha.1"
 clap = { version = "4.4.6", features = ["derive"] }
-criterion = { version = "0.7.0", features = ["html_reports"] }
+criterion = { version = "0.8.0", features = ["html_reports"] }
 
 [[bench]]
 name = "mnist_bench"
